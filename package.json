@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@babel/preset-env": "^7.14.7",
+    "babel": "^6.23.0",
+    "jest": "^27.0.5"
+  }
+}
