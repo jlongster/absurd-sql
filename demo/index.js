@@ -34,20 +34,27 @@ async function init() {
   }
 }
 
-let _db = null;
-async function getDatabase() {
+let _db1 = null;
+let _db2 = null;
+async function getDatabase1() {
   await init();
-  if (_db == null) {
-    console.log('opening');
-    _db = new SQL.CustomDatabase('/tmp/blocked/db3.sqlite');
+  if (_db1 == null) {
+    _db1 = new SQL.CustomDatabase('/tmp/blocked/db3.sqlite');
   }
-  return _db;
+  return _db1;
+}
+async function getDatabase2() {
+  await init();
+  if (_db2 == null) {
+    _db2 = new SQL.CustomDatabase('/tmp/blocked/db3.sqlite');
+  }
+  return _db2;
 }
 
 let count = 500;
 
-async function populate() {
-  let db = await getDatabase();
+async function populate1() {
+  let db = await getDatabase1();
   db.exec(`
     -- PRAGMA cache_size=0;
     PRAGMA journal_mode=MEMORY;
@@ -70,18 +77,7 @@ async function populate() {
   for (let i = 0; i < 3; i++) {
     stmt.run([uuid.v4(), ((Math.random() * 100000) | 0).toString()]);
   }
-  db.prepare('COMMIT').run();
-
-  console.log('3 ---------------------');
-
-  db.prepare('BEGIN TRANSACTION').run();
-  stmt = db.prepare('INSERT INTO kv (key, value) VALUES (?, ?)');
-  let stmt2 = db.prepare('SELECT COUNT(*) FROM kv');
-  for (let i = 0; i < 2; i++) {
-    stmt.run([uuid.v4(), ((Math.random() * 100000) | 0).toString()]);
-    stmt2.run();
-  }
-  db.prepare('ROLLBACK').run();
+  // db.prepare('COMMIT').run();
 
   let file = backend.getFile('db3.sqlite');
 
@@ -92,13 +88,36 @@ async function populate() {
   );
 }
 
+async function populate2() {
+  let db = await getDatabase2();
+
+  db.exec('BEGIN TRANSACTION');
+  try {
+    let stmt = db.prepare('INSERT INTO kv (key, value) VALUES (?, ?)');
+    console.log('x3');
+    for (let i = 0; i < 3; i++) {
+      stmt.run([uuid.v4(), ((Math.random() * 100000) | 0).toString()]);
+      console.log('x', i);
+    }
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+}
+
+async function commit1() {
+  let db = await getDatabase1();
+  db.prepare('COMMIT').run();
+}
+
 async function run() {
   output.innerHTML = '';
 
-  let db = await getDatabase();
+  let db = await getDatabase1();
   // let off = (Math.random() * count) | 0;
   let off = 0;
-  let stmt = db.prepare(`PRAGMA journal_mode`);
+  let stmt = db.prepare(`PRAGMA locking_mode`);
   while (stmt.step()) {
     let row = stmt.getAsObject();
 
@@ -112,7 +131,7 @@ async function run() {
 async function vacuum() {
   output.innerHTML = '';
 
-  let db = await getDatabase();
+  let db = await getDatabase1();
   db.exec(`VACUUM`);
 
   let stmt = db.prepare(`PRAGMA page_size`);
@@ -123,13 +142,15 @@ async function vacuum() {
 
 async function size() {
   output.innerHTML = '';
-  let db = await getDatabase();
+  let db = await getDatabase1();
   let page_size = 1024;
   db.exec(`PRAGMA page_size=${page_size}`);
   output.innerHTML = `set page_size to ${page_size}`;
 }
 
-document.querySelector('#populate').addEventListener('click', populate);
+document.querySelector('#populate1').addEventListener('click', populate1);
+document.querySelector('#populate2').addEventListener('click', populate2);
+document.querySelector('#commit1').addEventListener('click', commit1);
 document.querySelector('#run').addEventListener('click', run);
 document.querySelector('#vacuum').addEventListener('click', vacuum);
 document.querySelector('#size').addEventListener('click', size);

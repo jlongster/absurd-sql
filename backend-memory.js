@@ -1,5 +1,6 @@
 export default class MemoryBackend {
   constructor(files, defaultChunkSize) {
+    this.locks = new Map();
     this.files = Object.fromEntries(
       Object.entries(files).map(([name, data]) => {
         return [name, { data, size: data.byteLength }];
@@ -21,6 +22,20 @@ export default class MemoryBackend {
 
   deleteFile(fileName) {
     this.files[fileName] = null;
+  }
+
+  lockFile(fileName) {
+    if (this.locks.get(fileName)) {
+      console.log('false')
+      return false;
+    }
+    this.locks.set(fileName, true);
+    console.log('returning true')
+    return true;
+  }
+
+  unlockFile(fileName) {
+    this.locks.set(fileName, false);
   }
 
   readMeta(fileName, defaultMeta) {

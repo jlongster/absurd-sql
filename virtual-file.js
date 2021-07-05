@@ -100,9 +100,8 @@ export class File {
   constructor(fileName, chunkSize, backend) {
     this.fileName = fileName;
     this.chunkSize = chunkSize;
-    this.buffer = [];
+    this.buffer = new Map();
     this.backend = backend;
-    this.snapshots = [];
 
     if (chunkSize <= 0) {
       throw new Error('Invalid chunk size: ' + chunkSize);
@@ -112,7 +111,7 @@ export class File {
   bufferChunks(chunks) {
     for (let i = 0; i < chunks.length; i++) {
       let chunk = chunks[i];
-      this.buffer.push(chunk);
+      this.buffer.set(chunk.pos, chunk);
     }
   }
 
@@ -130,8 +129,7 @@ export class File {
   load(indexes) {
     let status = indexes.reduce(
       (acc, b) => {
-        let buffer = [...this.buffer].reverse();
-        let inMemory = buffer.find(c => c.pos === b);
+        let inMemory = this.buffer.get(b);
         if (inMemory) {
           acc.chunks.push(inMemory);
         } else {
@@ -196,7 +194,7 @@ export class File {
   }
 
   write(bufferView, offset, length, position) {
-    console.log('writing', this.fileName, offset, length, position);
+    // console.log('writing', this.fileName, offset, length, position);
 
     let buffer = bufferView.buffer;
     if (length <= 0) {
@@ -264,26 +262,12 @@ export class File {
     return length;
   }
 
-  startAtomicWrite() {
-    this.snapshots.push(this.buffer.length);
+  lock() {
+    return this.backend.lockFile(this.fileName);
   }
 
-  commitAtomicWrite() {
-    if (this.snapshots.length === 0) {
-      throw new Error('committing without snapshot');
-    }
-    this.snapshots.pop();
-  }
-
-  rollbackAtomicWrite() {
-    console.log('rolling back', this.snapshots);
-    if (this.snapshots.length === 0) {
-      throw new Error('rolling back without snapshot');
-    }
-    let snapshot = this.snapshots[this.snapshots.length - 1];
-    this.buffer = this.buffer.slice(0, snapshot);
-    this.snapshots.pop();
-    console.log('rolled back', this.snapshots);
+  unlock() {
+    return this.backend.unlockFile(this.fileName);
   }
 
   fsync() {
@@ -291,8 +275,8 @@ export class File {
 
     console.log('fsync', this.fileName, this.buffer);
 
-    if (this.buffer.length > 0) {
-      this.backend.writeChunks(this.fileName, this.buffer);
+    if (this.buffer.size > 0) {
+      this.backend.writeChunks(this.fileName, [...this.buffer.values()]);
     }
 
     if (this._metaDirty) {
@@ -300,7 +284,7 @@ export class File {
       this._metaDirty = false;
     }
 
-    this.buffer = [];
+    this.buffer = new Map();
   }
 
   setattr(attr) {

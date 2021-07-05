@@ -183,6 +183,15 @@ export default class BlockedFS {
         throw this.FS.genericErrors[44];
       },
       mknod: (parent, name, mode, dev) => {
+        if (name.endsWith('.lock')) {
+          let file = this.FS.lookupNode(parent, name.replace(/\.lock$/, ''));
+
+          if (!file.contents.lock()) {
+            // File exists (can't lock)
+            throw new this.FS.ErrnoError(20);
+          }
+        }
+
         return this.createNode(parent, name, mode, dev);
       },
       rename: (old_node, new_dir, new_name) => {
@@ -192,7 +201,10 @@ export default class BlockedFS {
         this.backend.deleteFile(name);
       },
       rmdir: (parent, name) => {
-        throw new Error('rename not implemented');
+        if (name.endsWith('.lock')) {
+          let file = this.FS.lookupNode(parent, name.replace(/\.lock$/, ''));
+          file.contents.unlock();
+        }
       },
       readdir: node => {
         // list databases?
@@ -257,7 +269,7 @@ export default class BlockedFS {
       ioctl: (stream, cmd, arg) => {
         switch (cmd) {
           case ioctlCmds.SQLITE_FCNTL_BEGIN_ATOMIC_WRITE:
-            console.log('begin atomic');
+            stream.node.contents.console.log('begin atomic');
             break;
           case ioctlCmds.SQLITE_FCNTL_COMMIT_ATOMIC_WRITE:
             console.log('commit atomic');
@@ -296,7 +308,8 @@ export default class BlockedFS {
         mknod: this.node_ops.mknod,
         lookup: this.node_ops.lookup,
         unlink: this.node_ops.unlink,
-        setattr: this.node_ops.setattr
+        setattr: this.node_ops.setattr,
+        rmdir: this.node_ops.rmdir
       };
       node.stream_ops = {};
       node.contents = {};
