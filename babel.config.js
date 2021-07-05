@@ -1,1 +1,1 @@
-module.exports = {presets: ['@babel/preset-env']}
+module.exports = { plugins: ['@babel/plugin-transform-modules-commonjs'] };
