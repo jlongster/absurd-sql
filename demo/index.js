@@ -1,7 +1,7 @@
 import initSqlJs from 'sql.js/dist/sql-wasm-debug';
 import BlockedFS from '../blockedfs';
 import * as uuid from 'uuid';
-import MemoryBackend from '../backend-memory';
+import IndexedDBBackend from '../backend-indexeddb';
 
 let output = document.querySelector('#output');
 
@@ -15,7 +15,8 @@ function randomBuffer(size) {
   return buffer;
 }
 
-let backend = new MemoryBackend({}, 4096);
+// let backend = new MemoryBackend({}, 4096);
+let backend = IndexedDBBackend(4096);
 
 let SQL = null;
 async function init() {
@@ -23,8 +24,11 @@ async function init() {
     SQL = await initSqlJs({ locateFile: file => file });
     SQL._register_for_idb();
 
+    let BFS = new BlockedFS(SQL.FS, backend);
+    // await BFS.init();
+
     SQL.FS.mkdir('/tmp/blocked');
-    SQL.FS.mount(new BlockedFS(SQL.FS, backend), {}, '/tmp/blocked');
+    SQL.FS.mount(BFS, {}, '/tmp/blocked');
 
     SQL.FS.create('/tmp/blocked/db3.sqlite', SQL.FS.getMode(true, true));
     SQL.FS.create(
