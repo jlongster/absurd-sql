@@ -163,7 +163,7 @@ export default class BlockedFS {
         attr.atime = new Date(0);
         attr.mtime = new Date(0);
         attr.ctime = new Date(0);
-        attr.blksize = fileattr ? fileattr.chunkSize : 4096;
+        attr.blksize = fileattr ? fileattr.blockSize : 4096;
         attr.blocks = Math.ceil(attr.size / attr.blksize);
         return attr;
       },
@@ -292,9 +292,17 @@ export default class BlockedFS {
     };
   }
 
+  // async init() {
+  //   await this.backend.init();
+
+  //   // load FS
+  // }
+
   mount() {
     return this.createNode(null, '/', 16384 /* dir */ | 511 /* 0777 */, 0);
   }
+
+  // TODO: implement lookup for existing files (maybe)
 
   createNode(parent, name, mode, dev) {
     // Only files and directories supported
@@ -318,11 +326,7 @@ export default class BlockedFS {
       node.stream_ops = this.stream_ops;
 
       // Create file!
-      node.contents = new File(
-        name,
-        this.backend.defaultChunkSize,
-        this.backend
-      );
+      node.contents = this.backend.createFile(name);
     }
 
     // add the new node to the parent

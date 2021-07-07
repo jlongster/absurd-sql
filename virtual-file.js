@@ -6,11 +6,11 @@ function range(start, end, step) {
   return r;
 }
 
-export function getBoundaryIndexes(chunkSize, start, end) {
-  let startC = start - (start % chunkSize);
-  let endC = end - 1 - ((end - 1) % chunkSize);
+export function getBoundaryIndexes(blockSize, start, end) {
+  let startC = start - (start % blockSize);
+  let endC = end - 1 - ((end - 1) % blockSize);
 
-  return range(startC, endC, chunkSize);
+  return range(startC, endC, blockSize);
 }
 
 export function readChunks(chunks, start, end) {
@@ -49,25 +49,25 @@ export function readChunks(chunks, start, end) {
   return buffer;
 }
 
-export function writeChunks(bufferView, chunkSize, start, end) {
-  let indexes = getBoundaryIndexes(chunkSize, start, end);
+export function writeChunks(bufferView, blockSize, start, end) {
+  let indexes = getBoundaryIndexes(blockSize, start, end);
   let cursor = 0;
 
   return indexes
     .map(index => {
       let cstart = 0;
-      let cend = chunkSize;
-      if (start > index && start < index + chunkSize) {
+      let cend = blockSize;
+      if (start > index && start < index + blockSize) {
         cstart = start - index;
       }
-      if (end > index && end < index + chunkSize) {
+      if (end > index && end < index + blockSize) {
         cend = end - index;
       }
 
       let len = cend - cstart;
-      let chunkBuffer = new ArrayBuffer(chunkSize);
+      let chunkBuffer = new ArrayBuffer(blockSize);
 
-      if (start > index + chunkSize || end <= index) {
+      if (start > index + blockSize || end <= index) {
         return null;
       }
 
@@ -97,15 +97,10 @@ export function writeChunks(bufferView, chunkSize, start, end) {
 }
 
 export class File {
-  constructor(fileName, chunkSize, backend) {
-    this.fileName = fileName;
-    this.chunkSize = chunkSize;
+  constructor(filename, ops) {
+    this.filename = filename;
     this.buffer = new Map();
-    this.backend = backend;
-
-    if (chunkSize <= 0) {
-      throw new Error('Invalid chunk size: ' + chunkSize);
-    }
+    this.ops = ops;
   }
 
   bufferChunks(chunks) {
@@ -116,10 +111,16 @@ export class File {
   }
 
   open() {
-    this.meta = this.backend.readMeta(this.fileName, {
-      size: 0,
-      chunkSize: this.chunkSize
-    });
+    this.meta = this.ops.readMeta();
+
+    if (this.meta == null) {
+      // New file
+      this.setattr({
+        size: 0,
+        // TODO: should be able to customize this?
+        blockSize: 4096
+      });
+    }
   }
 
   close() {
@@ -140,17 +141,12 @@ export class File {
       { chunks: [], missing: [] }
     );
 
-    let missingChunks = this.backend.readChunks(
-      this.fileName,
-      status.missing,
-      this.chunkSize
-    );
-
+    let missingChunks = this.ops.readBlocks(status.missing);
     return status.chunks.concat(missingChunks);
   }
 
   read(bufferView, offset, length, position) {
-    console.log('reading', this.fileName, offset, length, position);
+    console.log('reading', this.filename, offset, length, position);
     let buffer = bufferView.buffer;
 
     if (length <= 0) {
@@ -175,7 +171,7 @@ export class File {
     let start = position;
     let end = position + dataLength;
 
-    let indexes = getBoundaryIndexes(this.chunkSize, start, end);
+    let indexes = getBoundaryIndexes(this.meta.blockSize, start, end);
 
     let chunks = this.load(indexes);
     let readBuffer = readChunks(chunks, start, end);
@@ -194,7 +190,7 @@ export class File {
   }
 
   write(bufferView, offset, length, position) {
-    // console.log('writing', this.fileName, offset, length, position);
+    console.log('writing', this.filename, offset, length, position);
 
     let buffer = bufferView.buffer;
     if (length <= 0) {
@@ -211,16 +207,18 @@ export class File {
 
     let writes = writeChunks(
       new Uint8Array(buffer, offset, length),
-      this.chunkSize,
+      this.meta.blockSize,
       position,
       position + length
     );
+
+    console.log(writes, this.meta.blockSize);
 
     // Find any partial chunks and read them in and merge with
     // existing data
     let { partialWrites, fullWrites } = writes.reduce(
       (state, write) => {
-        if (write.length !== this.chunkSize) {
+        if (write.length !== this.meta.blockSize) {
           state.partialWrites.push(write);
         } else {
           state.fullWrites.push({
@@ -263,24 +261,24 @@ export class File {
   }
 
   lock() {
-    return this.backend.lockFile(this.fileName);
+    return this.ops.lock();
   }
 
   unlock() {
-    return this.backend.unlockFile(this.fileName);
+    return this.ops.unlock();
   }
 
   fsync() {
     // TODO: both of these writes should happen in a transaction
 
-    console.log('fsync', this.fileName, this.buffer);
+    console.log('fsync', this.buffer);
 
     if (this.buffer.size > 0) {
-      this.backend.writeChunks(this.fileName, [...this.buffer.values()]);
+      this.ops.writeBlocks([...this.buffer.values()]);
     }
 
     if (this._metaDirty) {
-      this.backend.writeMeta(this.fileName, this.meta);
+      this.ops.writeMeta(this.meta);
       this._metaDirty = false;
     }
 
@@ -288,6 +286,7 @@ export class File {
   }
 
   setattr(attr) {
+    console.log('setattr', attr);
     if (attr.mode !== undefined) {
       this.meta.mode = attr.mode;
       this._metaDirty = true;
@@ -302,17 +301,22 @@ export class File {
       this.meta.size = attr.size;
       this._metaDirty = true;
     }
+
+    if (attr.blockSize !== undefined) {
+      this.meta.blockSize = attr.blockSize;
+      this._metaDirty = true;
+    }
   }
 
   getattr() {
     return this.meta;
   }
 
-  // repartition(chunkSize) {
+  // repartition(blockSize) {
   //   // Load it all into memory
   //   let buffer = this.readAll();
 
-  //   this.chunkSize = chunkSize;
+  //   this.blockSize = blockSize;
   //   this.write(allData, 0, allData.byteLength, 0);
   //   this._metaDirty = true;
 

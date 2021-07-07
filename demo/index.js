@@ -1,7 +1,7 @@
 import initSqlJs from 'sql.js/dist/sql-wasm-debug';
 import BlockedFS from '../blockedfs';
 import * as uuid from 'uuid';
-import IndexedDBBackend from '../backend-indexeddb';
+import MemoryBackend from '../backend-memory';
 
 let output = document.querySelector('#output');
 
@@ -15,8 +15,8 @@ function randomBuffer(size) {
   return buffer;
 }
 
-// let backend = new MemoryBackend({}, 4096);
-let backend = IndexedDBBackend(4096);
+let backend = new MemoryBackend(4096, {});
+// let backend = new IndexedDBBackend(4096);
 
 let SQL = null;
 async function init() {
@@ -87,8 +87,8 @@ async function populate1() {
 
   console.log(
     'done',
-    (file.size / 1024).toFixed(2) + 'KB',
-    file.size / backend.defaultChunkSize + ' blocks'
+    (file.meta.size / 1024).toFixed(2) + 'KB',
+    file.meta.size / backend.defaultBlockSize + ' blocks'
   );
 }
 

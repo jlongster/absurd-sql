@@ -1,69 +1,52 @@
-export default class MemoryBackend {
-  constructor(files, defaultChunkSize) {
-    this.locks = new Map();
-    this.files = Object.fromEntries(
-      Object.entries(files).map(([name, data]) => {
-        return [name, { data, size: data.byteLength }];
-      })
-    );
-    this.defaultChunkSize = defaultChunkSize;
+import { File } from './virtual-file';
+
+class FileOps {
+  constructor(filename, meta = null, data) {
+    this.filename = filename;
+    this.locked = false;
+    this.meta = meta;
+    this.data = data || new ArrayBuffer(0);
   }
 
-  getFile(fileName) {
-    return this.files[fileName];
-  }
-
-  getOrCreateFile(fileName) {
-    if (this.files[fileName] == null) {
-      this.files[fileName] = { data: new ArrayBuffer(0), size: 0 };
-    }
-    return this.files[fileName];
-  }
-
-  deleteFile(fileName) {
-    this.files[fileName] = null;
-  }
-
-  lockFile(fileName) {
-    if (this.locks.get(fileName)) {
-      console.log('false')
+  lock() {
+    if (this.locked) {
       return false;
     }
-    this.locks.set(fileName, true);
-    console.log('returning true')
+    this.locked = true;
     return true;
   }
 
-  unlockFile(fileName) {
-    this.locks.set(fileName, false);
+  unlock() {
+    this.locked = false;
   }
 
-  readMeta(fileName, defaultMeta) {
-    let exists = this.getFile(fileName) != null;
-    let file = this.getOrCreateFile(fileName);
-    return exists
-      ? { size: file.data.byteLength, chunkSize: this.defaultChunkSize }
-      : defaultMeta;
+  delete() {
+    // in-memory noop
   }
 
-  writeMeta(fileName, meta) {
-    let file = this.getOrCreateFile(fileName);
-    file.size = meta.size;
+  readMeta() {
+    return this.meta;
   }
 
-  readChunks(fileName, positions, chunkSize) {
-    console.log('_reading', fileName, positions);
-    // if (positions.length > 0) {
-    //   console.log('reading', positions);
-    // }
-    let data = this.files[fileName].data;
+  writeMeta(meta) {
+    this.meta.size = meta.size;
+    this.meta.blockSize = meta.blockSize;
+  }
+
+  readBlocks(positions) {
+    console.log('_reading', this.filename, positions);
+    let data = this.data;
 
     return positions.map(pos => {
-      let buffer = new ArrayBuffer(chunkSize);
+      let buffer = new ArrayBuffer(this.meta.blockSize);
 
       if (pos < data.byteLength) {
         new Uint8Array(buffer).set(
-          new Uint8Array(data, pos, Math.min(chunkSize, data.byteLength - pos))
+          new Uint8Array(
+            data,
+            pos,
+            Math.min(this.meta.blockSize, data.byteLength - pos)
+          )
         );
       }
 
@@ -71,13 +54,9 @@ export default class MemoryBackend {
     });
   }
 
-  writeChunks(fileName, writes) {
-    console.log('_writing', fileName, writes);
-    // if (writes.length > 0) {
-    //   console.log('writing', writes.map(w => w.pos));
-    // }
-    let file = this.getOrCreateFile(fileName);
-    let data = file.data;
+  writeBlocks(writes) {
+    console.log('_writing', this.filename, writes);
+    let data = this.data;
 
     for (let write of writes) {
       let fullLength = write.pos + write.data.byteLength;
@@ -86,10 +65,47 @@ export default class MemoryBackend {
         // Resize file
         let buffer = new ArrayBuffer(fullLength);
         new Uint8Array(buffer).set(new Uint8Array(data));
-        this.files[fileName].data = data = buffer;
+        this.data = data = buffer;
       }
 
       new Uint8Array(data).set(new Uint8Array(write.data), write.pos);
     }
+  }
+}
+
+export default class MemoryBackend {
+  constructor(defaultBlockSize, fileData) {
+    this.fileData = Object.fromEntries(
+      Object.entries(fileData).map(([name, data]) => {
+        return [name, { data, size: data.byteLength }];
+      })
+    );
+    this.files = {};
+    this.defaultBlockSize = defaultBlockSize;
+  }
+
+  async init() {}
+
+  createFile(filename) {
+    if (this.files[filename] == null) {
+      let data = this.fileData[filename];
+
+      this.files[filename] = new File(
+        filename,
+        new FileOps(
+          filename,
+          {
+            size: data ? data.byteLength : 0,
+            blockSize: this.defaultBlockSize
+          },
+          data ? data : null
+        )
+      );
+    }
+    return this.files[filename];
+  }
+
+  getFile(filename) {
+    return this.files[filename];
   }
 }

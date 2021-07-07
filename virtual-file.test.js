@@ -88,12 +88,12 @@ describe('reading file', () => {
       return;
     }
 
+    // Needs the meta with it
     let files = { 'file.db': bufferView.buffer };
-    let file = new File(
-      'file.db',
-      chunkSize,
-      new MemoryBackend(files, chunkSize)
-    );
+
+    let backend = new MemoryBackend(chunkSize, files);
+
+    let file = backend.lookupFile('file.db');
     file.open();
 
     let offset = 0;
