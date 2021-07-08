@@ -1,6 +1,6 @@
 import { File } from './virtual-file';
 
-class FileOps {
+export class FileOps {
   constructor(filename, meta = null, data) {
     this.filename = filename;
     this.locked = false;
@@ -29,8 +29,12 @@ class FileOps {
   }
 
   writeMeta(meta) {
+    if (this.meta == null) {
+      this.meta = {};
+    }
     this.meta.size = meta.size;
     this.meta.blockSize = meta.blockSize;
+    console.log('DONE', this.filename, this.meta);
   }
 
   readBlocks(positions) {
@@ -55,7 +59,7 @@ class FileOps {
   }
 
   writeBlocks(writes) {
-    console.log('_writing', this.filename, writes);
+    // console.log('_writing', this.filename, writes);
     let data = this.data;
 
     for (let write of writes) {
@@ -77,7 +81,7 @@ export default class MemoryBackend {
   constructor(defaultBlockSize, fileData) {
     this.fileData = Object.fromEntries(
       Object.entries(fileData).map(([name, data]) => {
-        return [name, { data, size: data.byteLength }];
+        return [name, data];
       })
     );
     this.files = {};
@@ -92,6 +96,7 @@ export default class MemoryBackend {
 
       this.files[filename] = new File(
         filename,
+        this.defaultBlockSize,
         new FileOps(
           filename,
           {

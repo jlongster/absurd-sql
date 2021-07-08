@@ -2,8 +2,7 @@ import initSqlJs from 'sql.js/dist/sql-wasm-debug';
 import BlockedFS from '../blockedfs';
 import * as uuid from 'uuid';
 import MemoryBackend from '../backend-memory';
-
-let output = document.querySelector('#output');
+import IndexedDBBackend from '../backend-indexeddb';
 
 function randomBuffer(size) {
   let buffer = new ArrayBuffer(size);
@@ -11,12 +10,11 @@ function randomBuffer(size) {
   for (let i = 0; i < size; i++) {
     view[i] = (Math.random() * 255) | 0;
   }
-  console.log(buffer);
   return buffer;
 }
 
-let backend = new MemoryBackend(4096, {});
-// let backend = new IndexedDBBackend(4096);
+// let backend = new MemoryBackend(4096, {});
+let backend = new IndexedDBBackend(4096);
 
 let SQL = null;
 async function init() {
@@ -25,7 +23,7 @@ async function init() {
     SQL._register_for_idb();
 
     let BFS = new BlockedFS(SQL.FS, backend);
-    // await BFS.init();
+    await BFS.init();
 
     SQL.FS.mkdir('/tmp/blocked');
     SQL.FS.mount(BFS, {}, '/tmp/blocked');
@@ -76,20 +74,23 @@ async function populate1() {
 
   console.log('2 ---------------------');
 
-  db.prepare('BEGIN TRANSACTION').run();
+  console.log('writing');
+  let start = Date.now();
+  db.exec('BEGIN TRANSACTION');
   let stmt = db.prepare('INSERT INTO kv (key, value) VALUES (?, ?)');
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 1100000; i++) {
     stmt.run([uuid.v4(), ((Math.random() * 100000) | 0).toString()]);
   }
-  // db.prepare('COMMIT').run();
+  db.exec('COMMIT');
+  console.log('Done!', Date.now() - start);
 
-  let file = backend.getFile('db3.sqlite');
+  // let file = backend.getFile('db3.sqlite');
 
-  console.log(
-    'done',
-    (file.meta.size / 1024).toFixed(2) + 'KB',
-    file.meta.size / backend.defaultBlockSize + ' blocks'
-  );
+  // console.log(
+  //   'done',
+  //   (file.meta.size / 1024).toFixed(2) + 'KB',
+  //   file.meta.size / backend.defaultBlockSize + ' blocks'
+  // );
 }
 
 async function populate2() {
@@ -99,7 +100,7 @@ async function populate2() {
   try {
     let stmt = db.prepare('INSERT INTO kv (key, value) VALUES (?, ?)');
     console.log('x3');
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 3000; i++) {
       stmt.run([uuid.v4(), ((Math.random() * 100000) | 0).toString()]);
       console.log('x', i);
     }
@@ -116,47 +117,77 @@ async function commit1() {
 }
 
 async function run() {
-  output.innerHTML = '';
-
   let db = await getDatabase1();
   // let off = (Math.random() * count) | 0;
   let off = 0;
-  let stmt = db.prepare(`PRAGMA locking_mode`);
+
+  let start = Date.now();
+
+  let stmt = db.prepare(`SELECT COUNT(*) FROM kv`);
   while (stmt.step()) {
     let row = stmt.getAsObject();
-
-    let div = document.createElement('div');
-    div.textContent = JSON.stringify(row);
-    output.appendChild(div);
+    if (typeof document !== 'undefined') {
+      let output = document.querySelector('#output');
+      let div = document.createElement('div');
+      div.textContent = JSON.stringify(row);
+      output.appendChild(div);
+    } else {
+      console.log(row);
+    }
   }
   stmt.free();
+
+  console.log('Done reading', Date.now() - start);
 }
 
 async function vacuum() {
-  output.innerHTML = '';
-
   let db = await getDatabase1();
   db.exec(`VACUUM`);
 
   let stmt = db.prepare(`PRAGMA page_size`);
   stmt.step();
-  output.innerHTML = JSON.stringify(stmt.getAsObject());
+
+  if (typeof document !== 'undefined') {
+    let output = document.querySelector('#output');
+    output.innerHTML = JSON.stringify(stmt.getAsObject());
+  } else {
+    console.log(JSON.stringify(stmt.getAsObject()));
+  }
+
   stmt.free();
 }
 
 async function size() {
-  output.innerHTML = '';
+  // output.innerHTML = '';
   let db = await getDatabase1();
   let page_size = 1024;
   db.exec(`PRAGMA page_size=${page_size}`);
-  output.innerHTML = `set page_size to ${page_size}`;
+  // output.innerHTML = `set page_size to ${page_size}`;
 }
 
-document.querySelector('#populate1').addEventListener('click', populate1);
-document.querySelector('#populate2').addEventListener('click', populate2);
-document.querySelector('#commit1').addEventListener('click', commit1);
-document.querySelector('#run').addEventListener('click', run);
-document.querySelector('#vacuum').addEventListener('click', vacuum);
-document.querySelector('#size').addEventListener('click', size);
+let methods = {
+  init,
+  populate1,
+  populate2,
+  commit1,
+  run,
+  vacuum,
+  size
+};
 
-init();
+if (typeof self !== 'undefined') {
+  self.onmessage = msg => {
+    if (methods[msg.data.name] == null) {
+      throw new Error('Unknown method: ' + msg.data.name);
+    }
+    methods[msg.data.name]();
+  };
+} else {
+  for (let method of Object.keys(methods)) {
+    let btn = document.querySelector(`#${method}`);
+    if (btn) {
+      btn.addEventListener('click', methods[method]);
+    }
+  }
+  init();
+}

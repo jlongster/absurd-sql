@@ -93,7 +93,7 @@ describe('reading file', () => {
 
     let backend = new MemoryBackend(chunkSize, files);
 
-    let file = backend.lookupFile('file.db');
+    let file = backend.createFile('file.db');
     file.open();
 
     let offset = 0;
@@ -102,22 +102,27 @@ describe('reading file', () => {
       0
     );
 
-    let buffer = new ArrayBuffer(len);
-    let bytesRead = file.read(buffer, offset, length, pos);
+    let buffer = new ArrayBuffer(Math.max(length, 0));
+    let bytesRead = file.read(new Uint8Array(buffer), offset, length, pos);
 
-    if (buffer.byteLength === 0 || pos < 0) {
+    if (length < 0 || pos < 0) {
       expect(bytesRead).toBe(0);
-      expect(toArray(buffer)).toEqual(toArray(zeroBuffer(len)));
+      expect(toArray(buffer)).toEqual(toArray(zeroBuffer(Math.max(length, 0))));
     } else {
-      expect(bytesRead).toBe(len);
-      expect(toArray(buffer)).toEqual(
-        toArray(new Uint8Array(bufferView.buffer, pos, len))
-      );
+      expect(bytesRead).toBe(length);
+
+      let testBuffer = new ArrayBuffer(length);
+      if (len > 0) {
+        new Uint8Array(testBuffer).set(
+          new Uint8Array(bufferView.buffer, pos, len)
+        );
+      }
+      expect(toArray(buffer)).toEqual(toArray(testBuffer));
     }
   }
 
   test('read-counter', () => {
-    let counter = [Int8Array.from([0]), 1, 0, 1];
+    let counter = [Int8Array.from([]), 1, 0, -1];
     readPropTest(...counter);
   });
 
@@ -139,6 +144,8 @@ describe('reading file', () => {
   });
 });
 
+// TODO: write prop test for reading file that has pending writes
+
 describe('writing file', () => {
   function applyWrite(
     file,
@@ -149,7 +156,7 @@ describe('writing file', () => {
     length,
     pos
   ) {
-    let bytesWritten = file.write(writeDataView.buffer, offset, length, pos);
+    let bytesWritten = file.write(writeDataView, offset, length, pos);
 
     // Check bytes written
     let len = Math.min(length, writeDataView.length);
@@ -184,11 +191,11 @@ describe('writing file', () => {
 
   function writePropTest(bufferView, chunkSize, writeDataView, length, pos) {
     let files = { 'file.db': bufferView.buffer };
-    let backend = new MemoryBackend(files, chunkSize);
+    let backend = new MemoryBackend(chunkSize, files);
 
-    let file = new File('file.db', chunkSize, backend);
+    let file = backend.createFile('file.db');
     file.open();
-    let original = backend.getFile('file.db').data.slice(0);
+    let original = file.ops.data.slice(0);
     let maxPos = file.getattr().size;
 
     let offset = 0;
@@ -209,18 +216,18 @@ describe('writing file', () => {
     file.fsync();
 
     let fileInfo = backend.getFile('file.db');
-    expect(toArray(fileInfo.data)).toEqual(toArray(original));
-    expect(fileInfo.size).toBe(maxPos);
+    expect(toArray(fileInfo.ops.data)).toEqual(toArray(original));
+    expect(fileInfo.getattr().size).toBe(maxPos);
   }
 
   function writePropTest2(bufferView, chunkSize, arr) {
     let files = { 'file.db': bufferView.buffer };
-    let backend = new MemoryBackend(files, chunkSize);
+    let backend = new MemoryBackend(chunkSize, files);
 
-    let file = new File('file.db', chunkSize, backend);
+    let file = backend.createFile('file.db');
     file.open();
-    let original2 = backend.getFile('file.db').data.slice(0);
-    let original = backend.getFile('file.db').data.slice(0);
+    let original2 = file.ops.data.slice(0);
+    let original = file.ops.data.slice(0);
 
     let maxPos = file.getattr().size;
 
@@ -244,20 +251,18 @@ describe('writing file', () => {
       }
     }
 
-    expect(toArray(backend.getFile('file.db').data)).toEqual(
-      toArray(original2)
-    );
+    expect(toArray(file.ops.data)).toEqual(toArray(original2));
     file.fsync();
-    expect(toArray(backend.getFile('file.db').data)).toEqual(toArray(original));
+    expect(toArray(file.ops.data)).toEqual(toArray(original));
 
-    let fileInfo = backend.getFile('file.db');
-    expect(toArray(fileInfo.data)).toEqual(toArray(original));
-    expect(fileInfo.size).toBe(maxPos);
+    // let file = backend.getFile('file.db');
+    expect(toArray(file.ops.data)).toEqual(toArray(original));
+    expect(file.getattr().size).toBe(maxPos);
   }
 
   test('write-counter', () => {
-    let counter = [Uint8Array.from([]), 1, Uint8Array.from([]), 0, 1];
-    writePropTest(...counter);
+    let counter = [Uint8Array.from([]), 1, [[Uint8Array.from([0]), 0, 1]]];
+    writePropTest2(...counter);
   });
 
   test('write-prop1', () => {
@@ -265,7 +270,7 @@ describe('writing file', () => {
       fc.property(
         // buffer
         fc.uint8Array({ maxLength: 1000 }),
-        // chunk size
+        // block size
         fc.integer(1, 1000),
         // writeData
         fc.uint8Array({ maxLength: 1000 }),
@@ -283,7 +288,7 @@ describe('writing file', () => {
       fc.property(
         // buffer
         fc.uint8Array({ maxLength: 1000 }),
-        // chunk size
+        // block size
         fc.integer(1, 1000),
         // many writes!
         fc.array(

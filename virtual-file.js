@@ -42,7 +42,10 @@ export function readChunks(chunks, start, end) {
 
     let len = cend - cstart;
 
-    bufferView.set(new Uint8Array(chunk.data, cstart, len), cursor);
+    bufferView.set(
+      new Uint8Array(chunk.data, cstart, len),
+      chunk.pos - start + cstart
+    );
     cursor += len;
   }
 
@@ -97,10 +100,12 @@ export function writeChunks(bufferView, blockSize, start, end) {
 }
 
 export class File {
-  constructor(filename, ops) {
+  constructor(filename, defaultBlockSize, ops, meta = null) {
     this.filename = filename;
+    this.defaultBlockSize = defaultBlockSize;
     this.buffer = new Map();
     this.ops = ops;
+    this.meta = meta;
   }
 
   bufferChunks(chunks) {
@@ -114,17 +119,24 @@ export class File {
     this.meta = this.ops.readMeta();
 
     if (this.meta == null) {
+      this.meta = {};
+
       // New file
       this.setattr({
         size: 0,
-        // TODO: should be able to customize this?
-        blockSize: 4096
+        blockSize: this.defaultBlockSize
       });
+
+      this.fsync();
     }
   }
 
   close() {
     this.fsync();
+  }
+
+  delete() {
+    this.ops.delete();
   }
 
   load(indexes) {
@@ -146,7 +158,7 @@ export class File {
   }
 
   read(bufferView, offset, length, position) {
-    console.log('reading', this.filename, offset, length, position);
+    // console.log('reading', this.filename, offset, length, position);
     let buffer = bufferView.buffer;
 
     if (length <= 0) {
@@ -190,7 +202,7 @@ export class File {
   }
 
   write(bufferView, offset, length, position) {
-    console.log('writing', this.filename, offset, length, position);
+    // console.log('writing', this.filename, offset, length, position);
 
     let buffer = bufferView.buffer;
     if (length <= 0) {
@@ -211,8 +223,6 @@ export class File {
       position,
       position + length
     );
-
-    console.log(writes, this.meta.blockSize);
 
     // Find any partial chunks and read them in and merge with
     // existing data
@@ -271,8 +281,6 @@ export class File {
   fsync() {
     // TODO: both of these writes should happen in a transaction
 
-    console.log('fsync', this.buffer);
-
     if (this.buffer.size > 0) {
       this.ops.writeBlocks([...this.buffer.values()]);
     }
@@ -286,7 +294,6 @@ export class File {
   }
 
   setattr(attr) {
-    console.log('setattr', attr);
     if (attr.mode !== undefined) {
       this.meta.mode = attr.mode;
       this._metaDirty = true;

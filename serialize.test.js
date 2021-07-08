@@ -7,7 +7,7 @@ describe('reader/writer', () => {
     // enough buffer that the prop test never reaches the limit
     let size = 1000000;
     let buffer = new ArrayBuffer(size);
-    let writer = new Writer(new Uint8Array(buffer), {
+    let writer = new Writer(buffer, {
       useAtomics: false,
       stream: false
     });
@@ -24,7 +24,7 @@ describe('reader/writer', () => {
     }
     writer.finalize();
 
-    let reader = new Reader(new Uint8Array(buffer), {
+    let reader = new Reader(buffer, {
       useAtomics: false,
       stream: false
     });
@@ -66,11 +66,11 @@ describe('reader/writer worker', () => {
     // enough buffer that the prop test never reaches the limit
     let size = 1000000;
     let buffer = new ArrayBuffer(size);
-    let writer = new Writer(new Uint8Array(buffer), {
+    let writer = new Writer(buffer, {
       useAtomics: false,
       stream: true
     });
-    let reader = new Reader(new Uint8Array(buffer), {
+    let reader = new Reader(buffer, {
       useAtomics: false,
       stream: true
     });

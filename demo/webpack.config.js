@@ -1,52 +1,27 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
-module.exports = {
-  devServer: {
-    publicPath: '/',
-    hot: true
-  },
-  entry: './index.js',
-  mode: 'development',
-  resolve: {
-    fallback: {
-      crypto: false,
-      path: false,
-      fs: false
-    }
-  },
-  // module: {
-  //   rules: [
-  //     {
-  //       test: /\.js$/,
-  //       use: [
-  //         {
-  //           loader: 'babel-loader',
-  //           options: {
-  //             presets: ['@babel/preset-react']
-  //           }
-  //         }
-  //       ]
-  //     },
-  //     {
-  //       test: /\.css$/,
-  //       use: [
-  //         {
-  //           loader: 'style-loader'
-  //         },
-  //         {
-  //           loader: 'css-loader',
-  //           options: {
-  //             importLoaders: 2,
-  //             sourceMap: true
-  //           }
-  //         }
-  //       ]
-  //     }
-  //   ]
-  // },
-  plugins: [
-    new HtmlWebpackPlugin({
-      template: './index.html'
-    })
-  ]
-};
+function getConfig(name, entry, html) {
+  return {
+    name,
+    devServer: {
+      publicPath: '/',
+      hot: true
+    },
+    entry,
+    mode: 'development',
+    resolve: {
+      fallback: {
+        crypto: false,
+        path: false,
+        fs: false
+      }
+    },
+    plugins: [new HtmlWebpackPlugin({ template: html })]
+  };
+}
+
+module.exports = [
+  getConfig('basic-memory', './basic-memory.js', './index.html'),
+  getConfig('basic-idb', './basic-idb.js', './index.html'),
+  getConfig('idb-test', './idb-test.js', './idb-test.html')
+];

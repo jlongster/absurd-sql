@@ -198,7 +198,8 @@ export default class BlockedFS {
         throw new Error('rename not implemented');
       },
       unlink: (parent, name) => {
-        this.backend.deleteFile(name);
+        let node = this.FS.lookupNode(parent, name)
+        node.contents.delete(name);
       },
       rmdir: (parent, name) => {
         if (name.endsWith('.lock')) {
@@ -292,11 +293,9 @@ export default class BlockedFS {
     };
   }
 
-  // async init() {
-  //   await this.backend.init();
-
-  //   // load FS
-  // }
+  async init() {
+    await this.backend.init();
+  }
 
   mount() {
     return this.createNode(null, '/', 16384 /* dir */ | 511 /* 0777 */, 0);
