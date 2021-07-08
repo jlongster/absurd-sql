@@ -46,7 +46,7 @@ export class Reader {
     }
   }
 
-  done() {
+  done(force) {
     this.log('checking done');
     this.wait('done');
     let dataView = new DataView(this.buffer, this.offset);
@@ -54,6 +54,8 @@ export class Reader {
 
     if (done) {
       this.notify();
+    } else if (force) {
+      throw new Error('not done');
     }
 
     return done;
