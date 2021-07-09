@@ -1,5 +1,6 @@
 import { Reader, Writer } from './serialize';
 import { File } from './virtual-file';
+import { startWorker } from './start-indexeddb-worker';
 
 let argBuffer = new SharedArrayBuffer(10000);
 let writer = new Writer(argBuffer, { name: 'args', debug: false });
@@ -7,24 +8,26 @@ let writer = new Writer(argBuffer, { name: 'args', debug: false });
 let resultBuffer = new SharedArrayBuffer(10000);
 let reader = new Reader(resultBuffer, { name: 'results', debug: false });
 
-let worker;
-let workerReady;
-function startWorker() {
-  worker = new Worker(new URL('indexeddb-worker.js', import.meta.url));
-  worker.postMessage([argBuffer, resultBuffer]);
+console.log('BACKEND');
 
-  let onReady;
-  workerReady = new Promise(resolve => (onReady = resolve));
+// let worker;
+// let workerReady;
+// function startWorker() {
+//   worker = new Worker(new URL('indexeddb-worker.js', import.meta.url));
+//   worker.postMessage([argBuffer, resultBuffer]);
 
-  worker.onmessage = msg => {
-    switch (msg.data.type) {
-      case 'worker-ready':
-        onReady();
-    }
-  };
+//   let onReady;
+//   workerReady = new Promise(resolve => (onReady = resolve));
 
-  return workerReady;
-}
+//   worker.onmessage = msg => {
+//     switch (msg.data.type) {
+//       case 'worker-ready':
+//         onReady();
+//     }
+//   };
+
+//   return workerReady;
+// }
 
 function invokeWorker(method, args) {
   // console.log('invoking', method, args);
@@ -152,6 +155,10 @@ class FileOps {
   }
 
   readBlocks(positions) {
+    if (Math.random() < 0.01) {
+      console.log('reading blocks', positions);
+    }
+
     // console.log('_reading', this.filename, positions);
     let x = invokeWorker('readBlocks', {
       name: this.getStoreName(),
@@ -172,7 +179,7 @@ export default class IndexedDBBackend {
   }
 
   async init() {
-    await startWorker();
+    await startWorker(argBuffer, resultBuffer);
   }
 
   // lookupFile() {

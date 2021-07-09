@@ -1,42 +1,62 @@
 import { Reader, Writer } from './serialize';
-// import { FileOps } from './backend-memory';
+
+console.log('IDB WORKER');
+
+let idb = globalThis.indexedDB;
 
 let _db = null;
 
-async function getDb() {
+let requests = [];
+
+function getDb() {
+  return _db;
+}
+
+async function loadDb() {
   return new Promise((resolve, reject) => {
     if (_db) {
-      resolve(_db);
-    } else {
-      let req = indexedDB.open('sqlite3', 3);
-      req.onsuccess = event => {
-        _db = event.target.result;
-        resolve(_db);
-      };
-      req.onupgradeneeded = event => {
-        let db = event.target.result;
-        db.createObjectStore('db3.sqlite', { keyPath: 'key' });
-      };
-      req.onerror = req.onabort = e => reject(e.target.error);
+      resolve();
     }
+
+    let req = idb.open('sqlite3', 5);
+    req.onsuccess = event => {
+      console.log('db is open!');
+      _db = event.target.result;
+
+      _db.onversionchange = () => {
+        _db.close();
+      };
+
+      resolve(_db);
+    };
+    req.onupgradeneeded = event => {
+      let db = event.target.result;
+      // db.createObjectStore('db3.sqlite', { keyPath: 'key' });
+    };
+    req.onblocked = e => console.log('blocked', e);
+    req.onerror = req.onabort = e => reject(e.target.error);
   });
 }
 
 async function getStore(name) {
-  let db = await getDb();
+  let db = getDb();
 
   // if (!db.objectStoreNames.contains(name)) {
   //   db.createObjectStore(name, { keyPath: 'key' });
   // }
 
   let trans = db.transaction([name], 'readwrite');
+  requests.push(trans);
+
   return { trans, store: trans.objectStore(name) };
 }
 
-async function get(store, key, mapper) {
+async function get(store, key, mapper = x => x) {
   return new Promise((resolve, reject) => {
     let req = store.get(key);
-    req.onsuccess = e => resolve(mapper(req.result));
+    req.onsuccess = e => {
+      resolve(mapper(req.result));
+    };
     req.onerror = e => reject(e);
   });
 }
@@ -50,7 +70,6 @@ async function set(store, item) {
 }
 
 async function bulkSet(trans, store, items) {
-  console.log('setting', items.length);
   await new Promise((resolve, reject) => {
     for (let item of items) {
       store.put(item);
@@ -62,8 +81,10 @@ async function bulkSet(trans, store, items) {
 }
 
 async function handleReads(writer, name, positions) {
-  let { store } = await getStore(name);
+  let { trans, store } = await getStore(name);
+  let oncomplete = new Promise(resolve => (trans.oncomplete = resolve));
 
+  let start = Date.now();
   let data = await Promise.all(
     positions.map(pos =>
       get(store, pos, data => ({
@@ -72,6 +93,22 @@ async function handleReads(writer, name, positions) {
       }))
     )
   );
+  // console.log('result', Date.now() - start);
+
+  // requests = requests.filter(r => r !== trans);
+  if (trans.commit) {
+    trans.commit();
+  } else {
+    await oncomplete;
+  }
+
+  if (data[0].pos === 0) {
+    let a = new Uint8Array(data[0].data);
+    console.log(a[0].toString(16));
+    console.log(a[1].toString(16));
+    console.log(a[2].toString(16));
+    console.log(a[3].toString(16));
+  }
 
   for (let read of data) {
     writer.int32(read.pos);
@@ -100,10 +137,20 @@ async function handleWrites(writer, name, writes) {
 }
 
 async function handleReadMeta(writer, name) {
-  let { store } = await getStore(name);
+  let { trans, store } = await getStore(name);
+  let oncomplete = new Promise(resolve => (trans.oncomplete = resolve));
 
   try {
+    console.log('getting meta');
     let res = await get(store, -1);
+
+    if (trans.commit) {
+      trans.commit();
+    } else {
+      await oncomplete;
+    }
+
+    console.log('getting meta (done)');
     let meta = res && res.value;
     writer.int32(meta ? meta.size : -1);
     writer.int32(meta ? meta.blockSize : -1);
@@ -121,7 +168,6 @@ async function handleWriteMeta(writer, name, meta) {
 
   try {
     await set(store, { key: -1, value: meta });
-
     writer.int32(0);
     writer.finalize();
   } catch (err) {
@@ -141,9 +187,13 @@ async function handleDeleteFile(writer, name) {
 async function listen(argBuffer, resultBuffer) {
   let reader = new Reader(argBuffer, { name: 'args', debug: false });
   let writer = new Writer(resultBuffer, { name: 'results', debug: false });
+  console.log('listening');
 
   // eslint-disable-next-line
+  await loadDb();
+
   while (1) {
+    // reader.wait('loop', 10000);
     let method = reader.string();
 
     switch (method) {
@@ -223,8 +273,17 @@ async function listen(argBuffer, resultBuffer) {
 }
 
 self.onmessage = msg => {
-  postMessage({ type: 'worker-ready' });
+  switch (msg.data.type) {
+    case 'init': {
+      postMessage({ type: 'worker-ready' });
+      let [argBuffer, resultBuffer] = msg.data.buffers;
+      listen(argBuffer, resultBuffer);
+      break;
+    }
 
-  let [argBuffer, resultBuffer] = msg.data;
-  listen(argBuffer, resultBuffer);
+    case 'abort': {
+      console.log('aborting', requests.length);
+      requests.forEach(r => r.abort());
+    }
+  }
 };

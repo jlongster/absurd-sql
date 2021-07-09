@@ -5,7 +5,11 @@ function getConfig(name, entry, html) {
     name,
     devServer: {
       publicPath: '/',
-      hot: true
+      hot: true,
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp'
+      }
     },
     entry,
     mode: 'development',

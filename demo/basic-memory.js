@@ -39,10 +39,15 @@ async function init() {
 let _db1 = null;
 let _db2 = null;
 async function getDatabase1() {
+  console.log('1');
   await init();
+  console.log('2');
   if (_db1 == null) {
+    console.log('creating');
     _db1 = new SQL.CustomDatabase('/tmp/blocked/db3.sqlite');
+    console.log('creating (done)');
   }
+  console.log('3');
   return _db1;
 }
 async function getDatabase2() {
@@ -57,6 +62,7 @@ let count = 500;
 
 async function populate1() {
   let db = await getDatabase1();
+  console.log('dddbbb');
   db.exec(`
     -- PRAGMA cache_size=0;
     PRAGMA journal_mode=MEMORY;
@@ -117,7 +123,9 @@ async function commit1() {
 }
 
 async function run() {
+  console.log('running...');
   let db = await getDatabase1();
+  console.log('got database222', Math.random());
   // let off = (Math.random() * count) | 0;
   let off = 0;
 
@@ -176,11 +184,15 @@ let methods = {
 };
 
 if (typeof self !== 'undefined') {
+  console.log('WORKER');
   self.onmessage = msg => {
-    if (methods[msg.data.name] == null) {
-      throw new Error('Unknown method: ' + msg.data.name);
+    if (msg.data.type === 'ui-invoke') {
+      if (methods[msg.data.name] == null) {
+        throw new Error('Unknown method: ' + msg.data.name);
+      }
+      console.log(msg.data.name);
+      methods[msg.data.name]();
     }
-    methods[msg.data.name]();
   };
 } else {
   for (let method of Object.keys(methods)) {

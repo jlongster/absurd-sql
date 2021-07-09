@@ -1,8 +1,12 @@
+import { supportNestedWorkers } from '../start-indexeddb-worker';
+
 let worker;
 
 function init() {
   worker = new Worker(new URL('./basic-memory.js', import.meta.url));
-  worker.postMessage({ name: 'init' });
+  worker.postMessage({ type: 'ui-invoke', name: 'init' });
+
+  supportNestedWorkers(worker);
 }
 
 let methods = [
@@ -18,7 +22,9 @@ let methods = [
 for (let method of methods) {
   let btn = document.querySelector(`#${method}`);
   if (btn) {
-    btn.addEventListener('click', () => worker.postMessage({ name: method }));
+    btn.addEventListener('click', () =>
+      worker.postMessage({ type: 'ui-invoke', name: method })
+    );
   }
 }
 

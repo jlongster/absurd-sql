@@ -1,8 +1,5 @@
 let FINALIZED = 0xdeadbeef;
 
-let WRITEABLE = 0;
-let READABLE = 1;
-
 export class Reader {
   constructor(
     buffer,
@@ -15,6 +12,9 @@ export class Reader {
     this.stream = stream;
     this.debug = debug;
     this.name = name;
+
+    this.timings = [];
+    this.stack = [];
   }
 
   log(...args) {
@@ -23,74 +23,99 @@ export class Reader {
     }
   }
 
-  waitWrite(name) {
+  wait(name, timeout) {
     if (this.useAtomics) {
       this.log(`waiting for ${name}`);
+      // Switch to writable
+      // Atomics.store(this.atomicView, 0, 1);
 
-      while (Atomics.load(this.atomicView, 0) === WRITEABLE) {
-        // console.log('waiting for write...');
-        Atomics.wait(this.atomicView, 0, WRITEABLE, 500);
-      }
+      // Wait on readable
+      Atomics.wait(this.atomicView, 0, 1)
+      //   throw new Error('fucker timed out');
+      // }
+      // this.timings.push({
+      //   n: 'wake',
+      //   t: performance.timeOrigin + performance.now()
+      // });
 
       this.log(`resumed for ${name}`);
+
+      this.stack.push(name);
     }
   }
 
-  flip() {
-    let prev = Atomics.compareExchange(this.atomicView, 0, READABLE, WRITEABLE);
+  notify() {
+    if (this.stream) {
+      if (this.useAtomics) {
+        // Switch to writable
+        this.log('switching to writable');
 
-    if (prev !== READABLE) {
-      throw new Error('Read data out of sync! This is disastrous');
+        for (let i = 0; i < 1000; i++) {
+          this.atomicView[i] = -1234;
+        }
+
+        if (this.atomicView[0] === 1) {
+          throw new Error('NOOOOO');
+        }
+
+        // this.timings.push({
+        //   n: 'notify',
+        //   t: performance.timeOrigin + performance.now()
+        // });
+        Atomics.store(this.atomicView, 0, 1);
+        Atomics.notify(this.atomicView, 0);
+
+        this.wait();
+      } else {
+        this.atomicView[0] = 1;
+      }
+      this.offset = 4;
     }
-
-    Atomics.notify(this.atomicView, 0);
-    this.offset = 4;
   }
 
-  // notify() {
-  //   if (this.stream) {
-  //     if (this.useAtomics) {
-  //       // Switch to writable
-  //       this.log('switching to writable');
-  //       Atomics.store(this.atomicView, 0, 1);
-  //       Atomics.notify(this.atomicView, 0);
-  //     } else {
-  //       this.atomicView[0] = 1;
-  //     }
-  //     this.offset = 4;
-  //   }
-  // }
-
-  done(force) {
+  done() {
     this.log('checking done');
-    this.waitWrite();
-
+    // this.wait('done');
     let dataView = new DataView(this.buffer, this.offset);
     let done = dataView.getUint32(0) === FINALIZED;
 
     if (done) {
-      this.flip();
+      this.prevStack = this.stack;
+      this.stack = [];
+      this.notify();
     }
 
     return done;
   }
 
-  string() {
-    this.waitWrite();
+  string(timeout) {
+    // this.wait('string', timeout);
 
     let byteLength = this._int32();
+
+    if (byteLength === -1234) {
+      throw new Error('WAT');
+    }
+
     let length = byteLength / 2;
 
-    let dataView = new DataView(this.buffer, this.offset, byteLength);
-    let chars = [];
-    for (let i = 0; i < length; i++) {
-      chars.push(dataView.getUint16(i * 2));
+    // console.log('bl', byteLength, length)
+    let str;
+    try {
+      let dataView = new DataView(this.buffer, this.offset, byteLength);
+      let chars = [];
+      for (let i = 0; i < length; i++) {
+        chars.push(dataView.getUint16(i * 2));
+      }
+      str = String.fromCharCode.apply(null, chars);
+      this.log('string', str);
+    } catch (e) {
+      console.log(this.name, byteLength, length, this.stack, this.prevStack);
+      throw e;
     }
-    let str = String.fromCharCode.apply(null, chars);
-    this.log('string', str);
 
     this.offset += byteLength;
-    this.flip();
+    this.notify();
     return str;
   }
 
@@ -106,26 +131,32 @@ export class Reader {
   }
 
   int32() {
-    this.waitWrite();
+    // this.wait('int32');
     let num = this._int32();
     this.log('int32', num);
-    this.flip();
+    this.notify();
     return num;
   }
 
   bytes() {
-    this.waitWrite();
+    // this.wait('bytes');
 
     let byteLength = this._int32();
 
-    let bytes = new ArrayBuffer(byteLength);
-    new Uint8Array(bytes).set(
-      new Uint8Array(this.buffer, this.offset, byteLength)
-    );
-    this.log('bytes', bytes);
+    let bytes;
+    try {
+      bytes = new ArrayBuffer(byteLength);
+      new Uint8Array(bytes).set(
+        new Uint8Array(this.buffer, this.offset, byteLength)
+      );
+      this.log('bytes', bytes);
+    } catch (e) {
+      console.log(this.name, byteLength, this.stack, this.prevStack);
+      throw e;
+    }
 
     this.offset += byteLength;
-    this.flip();
+    this.notify();
     return bytes;
   }
 }
@@ -140,13 +171,14 @@ export class Writer {
     this.offset = initialOffset;
     this.useAtomics = useAtomics;
     this.stream = stream;
-
     this.debug = debug;
     this.name = name;
 
+    this.timings = [];
+
     if (this.useAtomics) {
       // The buffer starts out as writeable
-      Atomics.store(this.atomicView, 0, WRITEABLE);
+      Atomics.store(this.atomicView, 0, 1);
     } else {
       this.atomicView[0] = 1;
     }
@@ -158,48 +190,19 @@ export class Writer {
     }
   }
 
-  waitRead(name) {
-    if (this.useAtomics) {
-      this.log(`waiting for ${name}`);
-      // Switch to writable
-      // Atomics.store(this.atomicView, 0, 1);
-
-      let prev = Atomics.compareExchange(
-        this.atomicView,
-        0,
-        WRITEABLE,
-        READABLE
-      );
-
-      if (prev !== WRITEABLE) {
-        throw new Error(
-          'Wrote something into unwritable buffer! This is disastrous'
-        );
-      }
-
-      Atomics.notify(this.atomicView, 0);
-
-      while (Atomics.load(this.atomicView, 0) === READABLE) {
-        // console.log('waiting to be read...');
-        Atomics.wait(this.atomicView, 0, READABLE, 500);
-      }
-
-      this.offset = 4;
-
-      this.log(`resumed for ${name}`);
-    }
-  }
-
   wait() {
     if (this.useAtomics) {
       // Wait to be writable again
       this.log('waiting');
-
-      if (Atomics.wait(this.atomicView, 0, 0, 100) === 'timed-out') {
+      if (Atomics.wait(this.atomicView, 0, 0, 1000) === 'timed-out') {
         throw new Error(
           `[writer: ${this.name}] Writer cannot write: timed out`
         );
       }
+      // this.timings.push({
+      //   n: 'wake',
+      //   t: performance.timeOrigin + performance.now()
+      // });
       this.log('resumed');
     }
   }
@@ -207,10 +210,21 @@ export class Writer {
   notify() {
     if (this.stream) {
       if (this.useAtomics) {
+        if (this.atomicView[0] === 0) {
+          throw new Error('WWWAT');
+        }
+
         // Flush it out. Switch to readable
+        console.log('notify');
+        // this.timings.push({
+        //   n: 'notify',
+        //   t: performance.timeOrigin + performance.now()
+        // });
         Atomics.store(this.atomicView, 0, 0);
         Atomics.notify(this.atomicView, 0);
         this.log('switching to readable');
+
+        this.wait();
       } else {
         this.atomicView[0] = 0;
       }
@@ -220,12 +234,14 @@ export class Writer {
 
   finalize() {
     this.log('finalizing');
+    // this.wait();
     let dataView = new DataView(this.buffer, this.offset);
     dataView.setUint32(0, FINALIZED);
-    this.waitRead();
+    this.notify();
   }
 
   string(str) {
+    // this.wait();
     this.log('string', str);
 
     let byteLength = str.length * 2;
@@ -237,7 +253,7 @@ export class Writer {
     }
 
     this.offset += byteLength;
-    this.waitRead();
+    this.notify();
   }
 
   _int32(num) {
@@ -250,12 +266,14 @@ export class Writer {
   }
 
   int32(num) {
+    // this.wait();
     this.log('int32', num);
     this._int32(num);
-    this.waitRead();
+    this.notify();
   }
 
   bytes(buffer) {
+    // this.wait();
     this.log('bytes', buffer);
 
     let byteLength = buffer.byteLength;
@@ -263,6 +281,6 @@ export class Writer {
     new Uint8Array(this.buffer, this.offset).set(new Uint8Array(buffer));
 
     this.offset += byteLength;
-    this.waitRead();
+    this.notify();
   }
 }
