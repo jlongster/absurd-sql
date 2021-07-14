@@ -1,37 +1,39 @@
 import { Reader, Writer } from './serialize';
 
-console.log('IDB WORKER');
-
 let idb = globalThis.indexedDB;
 
-let _db = null;
+let openDbs = new Map();
 
-let requests = [];
-
-function getDb() {
-  return _db;
-}
-
-async function loadDb() {
+async function loadDb(name) {
   return new Promise((resolve, reject) => {
-    if (_db) {
-      resolve();
+    if (openDbs.get(name)) {
+      resolve(openDbs.get(name));
+      return;
     }
 
-    let req = idb.open('sqlite3', 5);
+    let req = idb.open(name, 1);
     req.onsuccess = event => {
-      console.log('db is open!');
-      _db = event.target.result;
+      console.log('db is open!', name);
+      let db = event.target.result;
 
-      _db.onversionchange = () => {
-        _db.close();
+      db.onversionchange = () => {
+        // TODO: Notify the user somehow
+        console.log('closing because version changed');
+        db.close();
       };
 
-      resolve(_db);
+      db.onclose = () => {
+        openDbs.delete(name);
+      };
+
+      openDbs.set(name, db);
+      resolve(db);
     };
     req.onupgradeneeded = event => {
       let db = event.target.result;
-      // db.createObjectStore('db3.sqlite', { keyPath: 'key' });
+      if (!db.objectStoreNames.contains('data')) {
+        db.createObjectStore('data', { keyPath: 'key' });
+      }
     };
     req.onblocked = e => console.log('blocked', e);
     req.onerror = req.onabort = e => reject(e.target.error);
@@ -39,16 +41,9 @@ async function loadDb() {
 }
 
 async function getStore(name) {
-  let db = getDb();
-
-  // if (!db.objectStoreNames.contains(name)) {
-  //   db.createObjectStore(name, { keyPath: 'key' });
-  // }
-
-  let trans = db.transaction([name], 'readwrite');
-  requests.push(trans);
-
-  return { trans, store: trans.objectStore(name) };
+  let db = await loadDb(name);
+  let trans = db.transaction(['data'], 'readwrite');
+  return { trans, store: trans.objectStore('data') };
 }
 
 async function get(store, key, mapper = x => x) {
@@ -80,41 +75,25 @@ async function bulkSet(trans, store, items) {
   });
 }
 
-async function handleReads(writer, name, positions) {
+async function handleRead(writer, name, position) {
   let { trans, store } = await getStore(name);
   let oncomplete = new Promise(resolve => (trans.oncomplete = resolve));
 
-  let start = Date.now();
-  let data = await Promise.all(
-    positions.map(pos =>
-      get(store, pos, data => ({
-        pos,
-        data: data ? data.value : new ArrayBuffer(4096 * 8)
-      }))
-    )
-  );
-  // console.log('result', Date.now() - start);
+  let data = await get(store, position, data => ({
+    pos: position,
+    data: data ? data.value : new ArrayBuffer(4096 * 4)
+  }));
 
-  // requests = requests.filter(r => r !== trans);
   if (trans.commit) {
     trans.commit();
   } else {
     await oncomplete;
   }
 
-  if (data[0].pos === 0) {
-    let a = new Uint8Array(data[0].data);
-    console.log(a[0].toString(16));
-    console.log(a[1].toString(16));
-    console.log(a[2].toString(16));
-    console.log(a[3].toString(16));
-  }
-
   for (let read of data) {
     writer.int32(read.pos);
     writer.bytes(read.data);
   }
-  writer.finalize();
 }
 
 async function handleWrites(writer, name, writes) {
@@ -164,10 +143,19 @@ async function handleReadMeta(writer, name) {
 }
 
 async function handleWriteMeta(writer, name, meta) {
-  let { store } = await getStore(name);
+  let { trans, store } = await getStore(name);
+  let oncomplete = new Promise(resolve => (trans.oncomplete = resolve));
 
   try {
+    console.log('setting meta', meta);
     await set(store, { key: -1, value: meta });
+
+    if (trans.commit) {
+      trans.commit();
+    } else {
+      await oncomplete;
+    }
+
     writer.int32(0);
     writer.finalize();
   } catch (err) {
@@ -188,9 +176,6 @@ async function listen(argBuffer, resultBuffer) {
   let reader = new Reader(argBuffer, { name: 'args', debug: false });
   let writer = new Writer(resultBuffer, { name: 'results', debug: false });
   console.log('listening');
-
-  // eslint-disable-next-line
-  await loadDb();
 
   while (1) {
     // reader.wait('loop', 10000);
@@ -218,7 +203,11 @@ async function listen(argBuffer, resultBuffer) {
           positions.push(pos);
         }
 
-        await handleReads(writer, name, positions);
+        for (let pos of positions) {
+          await handleRead(writer, name, pos);
+        }
+        writer.finalize();
+
         break;
       }
 
@@ -266,24 +255,24 @@ async function listen(argBuffer, resultBuffer) {
         break;
       }
 
+      // TODO: handle close
+
       default:
         throw new Error('Unknown method: ' + method);
     }
   }
 }
 
+console.log('running worker');
+
 self.onmessage = msg => {
+  console.log('worker got message', msg);
   switch (msg.data.type) {
     case 'init': {
       postMessage({ type: 'worker-ready' });
       let [argBuffer, resultBuffer] = msg.data.buffers;
       listen(argBuffer, resultBuffer);
       break;
-    }
-
-    case 'abort': {
-      console.log('aborting', requests.length);
-      requests.forEach(r => r.abort());
     }
   }
 };

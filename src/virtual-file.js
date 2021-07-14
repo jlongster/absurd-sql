@@ -106,6 +106,7 @@ export class File {
     this.buffer = new Map();
     this.ops = ops;
     this.meta = meta;
+    this._metaDirty = false;
   }
 
   bufferChunks(chunks) {
@@ -116,12 +117,14 @@ export class File {
   }
 
   open() {
+    // TODO: All these worker functions need to handle errors better
     this.meta = this.ops.readMeta();
 
     if (this.meta == null) {
       this.meta = {};
 
       // New file
+      console.log('block size', this.defaultBlockSize);
       this.setattr({
         size: 0,
         blockSize: this.defaultBlockSize
@@ -153,12 +156,15 @@ export class File {
       { chunks: [], missing: [] }
     );
 
-    let missingChunks = this.ops.readBlocks(status.missing);
+    let missingChunks = [];
+    if (status.missing.length > 0) {
+      missingChunks = this.ops.readBlocks(status.missing);
+    }
     return status.chunks.concat(missingChunks);
   }
 
   read(bufferView, offset, length, position) {
-    // console.log('reading', this.filename, offset, length, position);
+    console.log('reading', this.filename, offset, length, position);
     let buffer = bufferView.buffer;
 
     if (length <= 0) {
@@ -285,6 +291,7 @@ export class File {
       this.ops.writeBlocks([...this.buffer.values()]);
     }
 
+    console.log(this._metaDirty, this.meta);
     if (this._metaDirty) {
       this.ops.writeMeta(this.meta);
       this._metaDirty = false;

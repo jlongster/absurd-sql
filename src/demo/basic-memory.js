@@ -1,4 +1,4 @@
-import initSqlJs from 'sql.js/dist/sql-wasm-debug';
+import initSqlJs from 'sql.js';
 import BlockedFS from '../blockedfs';
 import * as uuid from 'uuid';
 import MemoryBackend from '../backend-memory';
@@ -13,8 +13,9 @@ function randomBuffer(size) {
   return buffer;
 }
 
-// let backend = new MemoryBackend(4096, {});
-let backend = new IndexedDBBackend(4096);
+let pageSize = 4096;
+// let backend = new MemoryBackend(pageSize, {});
+let backend = new IndexedDBBackend(pageSize);
 
 let SQL = null;
 async function init() {
@@ -23,37 +24,27 @@ async function init() {
     SQL._register_for_idb();
 
     let BFS = new BlockedFS(SQL.FS, backend);
+
     await BFS.init();
 
-    SQL.FS.mkdir('/tmp/blocked');
-    SQL.FS.mount(BFS, {}, '/tmp/blocked');
-
-    SQL.FS.create('/tmp/blocked/db3.sqlite', SQL.FS.getMode(true, true));
-    SQL.FS.create(
-      '/tmp/blocked/db3.sqlite-journal',
-      SQL.FS.getMode(true, true)
-    );
+    SQL.FS.mkdir('/blocked');
+    SQL.FS.mount(BFS, {}, '/blocked');
   }
 }
 
 let _db1 = null;
 let _db2 = null;
 async function getDatabase1() {
-  console.log('1');
   await init();
-  console.log('2');
   if (_db1 == null) {
-    console.log('creating');
-    _db1 = new SQL.CustomDatabase('/tmp/blocked/db3.sqlite');
-    console.log('creating (done)');
+    _db1 = new SQL.CustomDatabase('/blocked/db3.sqlite');
   }
-  console.log('3');
   return _db1;
 }
 async function getDatabase2() {
   await init();
   if (_db2 == null) {
-    _db2 = new SQL.CustomDatabase('/tmp/blocked/db3.sqlite');
+    _db2 = new SQL.CustomDatabase('/blocked/db3.sqlite');
   }
   return _db2;
 }
@@ -62,11 +53,11 @@ let count = 500;
 
 async function populate1() {
   let db = await getDatabase1();
-  console.log('dddbbb');
   db.exec(`
     -- PRAGMA cache_size=0;
     PRAGMA journal_mode=MEMORY;
     -- PRAGMA locking_mode=EXCLUSIVE;
+    PRAGMA page_size=${pageSize};
   `);
 
   console.log('1 ---------------------');
@@ -123,13 +114,25 @@ async function commit1() {
 }
 
 async function run() {
-  console.log('running...');
+  let FS = SQL.FS;
   let db = await getDatabase1();
-  console.log('got database222', Math.random());
   // let off = (Math.random() * count) | 0;
   let off = 0;
 
+  console.log(FS.root)
+  let { node } = FS.lookupPath('/blocked/db3.sqlite');
+  let file = node.contents;
+
+
+  db.exec(`
+    PRAGMA cache_size=-50000;
+    PRAGMA journal_mode=MEMORY;
+    PRAGMA page_size=${pageSize};
+  `);
+
   let start = Date.now();
+
+  file.ops.startStats();
 
   let stmt = db.prepare(`SELECT COUNT(*) FROM kv`);
   while (stmt.step()) {
@@ -145,6 +148,7 @@ async function run() {
   }
   stmt.free();
 
+  console.log('Stats', file.ops.endStats());
   console.log('Done reading', Date.now() - start);
 }
 

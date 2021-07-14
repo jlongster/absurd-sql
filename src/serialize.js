@@ -23,7 +23,7 @@ export class Reader {
     }
   }
 
-  waitWrite(name) {
+  waitWrite() {
     if (this.useAtomics) {
       this.log(`waiting for ${name}`);
 
@@ -33,42 +33,45 @@ export class Reader {
       }
 
       this.log(`resumed for ${name}`);
+    } else {
+      console.log('checking', this.atomicView[0]);
+      if (this.atomicView[0] !== READABLE) {
+        throw new Error('`waitWrite` expected array to be readable');
+      }
     }
   }
 
   flip() {
-    let prev = Atomics.compareExchange(this.atomicView, 0, READABLE, WRITEABLE);
+    if (this.useAtomics) {
+      let prev = Atomics.compareExchange(
+        this.atomicView,
+        0,
+        READABLE,
+        WRITEABLE
+      );
 
-    if (prev !== READABLE) {
-      throw new Error('Read data out of sync! This is disastrous');
+      if (prev !== READABLE) {
+        throw new Error('Read data out of sync! This is disastrous');
+      }
+
+      Atomics.notify(this.atomicView, 0);
+    } else {
+      this.atomicView[0] = WRITEABLE;
     }
 
-    Atomics.notify(this.atomicView, 0);
     this.offset = 4;
   }
 
-  // notify() {
-  //   if (this.stream) {
-  //     if (this.useAtomics) {
-  //       // Switch to writable
-  //       this.log('switching to writable');
-  //       Atomics.store(this.atomicView, 0, 1);
-  //       Atomics.notify(this.atomicView, 0);
-  //     } else {
-  //       this.atomicView[0] = 1;
-  //     }
-  //     this.offset = 4;
-  //   }
-  // }
-
-  done(force) {
-    this.log('checking done');
+  done() {
     this.waitWrite();
 
     let dataView = new DataView(this.buffer, this.offset);
     let done = dataView.getUint32(0) === FINALIZED;
 
+    console.log('checking', this.offset, dataView.getUint32(0), FINALIZED);
+
     if (done) {
+      this.log('done');
       this.flip();
     }
 
@@ -148,12 +151,12 @@ export class Writer {
       // The buffer starts out as writeable
       Atomics.store(this.atomicView, 0, WRITEABLE);
     } else {
-      this.atomicView[0] = 1;
+      this.atomicView[0] = WRITEABLE;
     }
   }
 
   log(...args) {
-    if (this.debug) {
+    if (this.debug || true) {
       console.log(`[writer: ${this.name}]`, ...args);
     }
   }
@@ -184,43 +187,18 @@ export class Writer {
         Atomics.wait(this.atomicView, 0, READABLE, 500);
       }
 
-      this.offset = 4;
-
       this.log(`resumed for ${name}`);
+    } else {
+      this.atomicView[0] = READABLE;
     }
-  }
 
-  wait() {
-    if (this.useAtomics) {
-      // Wait to be writable again
-      this.log('waiting');
-
-      if (Atomics.wait(this.atomicView, 0, 0, 100) === 'timed-out') {
-        throw new Error(
-          `[writer: ${this.name}] Writer cannot write: timed out`
-        );
-      }
-      this.log('resumed');
-    }
-  }
-
-  notify() {
-    if (this.stream) {
-      if (this.useAtomics) {
-        // Flush it out. Switch to readable
-        Atomics.store(this.atomicView, 0, 0);
-        Atomics.notify(this.atomicView, 0);
-        this.log('switching to readable');
-      } else {
-        this.atomicView[0] = 0;
-      }
-      this.offset = 4;
-    }
+    this.offset = 4;
   }
 
   finalize() {
     this.log('finalizing');
     let dataView = new DataView(this.buffer, this.offset);
+    console.log('finalizing (write)', this.offset);
     dataView.setUint32(0, FINALIZED);
     this.waitRead();
   }

@@ -1,3 +1,5 @@
+import IndexedDBWorker from './indexeddb.worker.js';
+
 let workerReady = null;
 let windowWorker;
 
@@ -16,7 +18,9 @@ export function startWorker(argBuffer, resultBuffer) {
   let onReady;
   workerReady = new Promise(resolve => (onReady = resolve));
 
-  if (typeof Worker === 'undefined' || isWorker()) {
+  console.log('running');
+
+  if (typeof Worker === 'undefined') {
     // No `Worker` available - this context does not support nested
     // workers sadly. We need to proxy creating a worker to the main
     // thread.
@@ -27,7 +31,11 @@ export function startWorker(argBuffer, resultBuffer) {
       );
     }
 
-    self.postMessage({ type: 'spawn-idb-worker', argBuffer, resultBuffer });
+    self.postMessage({
+      type: 'spawn-idb-worker',
+      argBuffer,
+      resultBuffer
+    });
 
     self.addEventListener('message', e => {
       if (e.data.type === 'worker-ready') {
@@ -35,9 +43,10 @@ export function startWorker(argBuffer, resultBuffer) {
       }
     });
   } else {
-    console.log('STARTING WORKER');
-    let worker = new Worker(new URL('indexeddb-worker.js', import.meta.url));
+    let worker = new IndexedDBWorker();
     windowWorker = worker;
+
+    console.log('posting message');
     worker.postMessage({ type: 'init', buffers: [argBuffer, resultBuffer] });
 
     worker.onmessage = msg => {
@@ -46,6 +55,7 @@ export function startWorker(argBuffer, resultBuffer) {
       }
     };
 
+    console.log('waiting to be ready');
     return workerReady;
   }
 }
@@ -60,9 +70,3 @@ export function supportNestedWorkers(worker) {
     }
   });
 }
-
-// if (!isWorker()) {
-//   window.addEventListener('beforeunload', function(event) {
-//     windowWorker.postMessage({ type: 'abort' });
-//   });
-// }

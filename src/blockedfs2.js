@@ -1,14 +1,8 @@
-/**
- * @license
- * Copyright 2013 The Emscripten Authors
- * SPDX-License-Identifier: MIT
- */
+'use strict';
 
-import { File } from './virtual-file';
+var SQLITE_NOTFOUND = 12;
 
-let SQLITE_NOTFOUND = 12;
-
-let ERRNO_CODES = {
+var ERRNO_CODES = {
   EPERM: 63,
   ENOENT: 44,
   ESRCH: 71,
@@ -132,13 +126,13 @@ let ERRNO_CODES = {
   ESTRPIPE: 135
 };
 
-let ioctlCmds = {
+var ioctlCmds = {
   SQLITE_FCNTL_BEGIN_ATOMIC_WRITE: 31,
   SQLITE_FCNTL_COMMIT_ATOMIC_WRITE: 32,
   SQLITE_FCNTL_ROLLBACK_ATOMIC_WRITE: 33
 };
 
-export default class BlockedFS {
+Module['BlockedFS'] = class BlockedFS {
   constructor(FS, backend) {
     this.FS = FS;
     this.backend = backend;
@@ -180,7 +174,7 @@ export default class BlockedFS {
         }
       },
       lookup: (parent, name) => {
-        throw this.FS.genericErrors[44];
+        throw new this.FS.ErrnoError(ERRNO_CODES.ENOENT);
       },
       mknod: (parent, name, mode, dev) => {
         if (name.endsWith('.lock')) {
@@ -198,7 +192,7 @@ export default class BlockedFS {
         throw new Error('rename not implemented');
       },
       unlink: (parent, name) => {
-        let node = this.FS.lookupNode(parent, name)
+        let node = this.FS.lookupNode(parent, name);
         node.contents.delete(name);
       },
       rmdir: (parent, name) => {
@@ -336,4 +330,4 @@ export default class BlockedFS {
 
     return node;
   }
-}
+};

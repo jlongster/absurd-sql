@@ -34,11 +34,10 @@ export class FileOps {
     }
     this.meta.size = meta.size;
     this.meta.blockSize = meta.blockSize;
-    console.log('DONE', this.filename, this.meta);
   }
 
   readBlocks(positions) {
-    console.log('_reading', this.filename, positions);
+    // console.log('_reading', this.filename, positions);
     let data = this.data;
 
     return positions.map(pos => {

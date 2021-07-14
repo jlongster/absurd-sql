@@ -2,32 +2,11 @@ import { Reader, Writer } from './serialize';
 import { File } from './virtual-file';
 import { startWorker } from './start-indexeddb-worker';
 
-let argBuffer = new SharedArrayBuffer(10000);
+let argBuffer = new SharedArrayBuffer(4096 * 9);
 let writer = new Writer(argBuffer, { name: 'args', debug: false });
 
-let resultBuffer = new SharedArrayBuffer(10000);
+let resultBuffer = new SharedArrayBuffer(4096 * 9);
 let reader = new Reader(resultBuffer, { name: 'results', debug: false });
-
-console.log('BACKEND');
-
-// let worker;
-// let workerReady;
-// function startWorker() {
-//   worker = new Worker(new URL('indexeddb-worker.js', import.meta.url));
-//   worker.postMessage([argBuffer, resultBuffer]);
-
-//   let onReady;
-//   workerReady = new Promise(resolve => (onReady = resolve));
-
-//   worker.onmessage = msg => {
-//     switch (msg.data.type) {
-//       case 'worker-ready':
-//         onReady();
-//     }
-//   };
-
-//   return workerReady;
-// }
 
 function invokeWorker(method, args) {
   // console.log('invoking', method, args);
@@ -129,6 +108,19 @@ class FileOps {
     this.filename = filename;
   }
 
+  startStats() {
+    this.stats = {
+      read: 0,
+      write: 0
+    };
+  }
+
+  endStats() {
+    let stats = this.stats;
+    this.stats = {};
+    return stats;
+  }
+
   getStoreName() {
     // TODO: better sanitization
     return this.filename.replace(/\//g, '-');
@@ -155,20 +147,27 @@ class FileOps {
   }
 
   readBlocks(positions) {
+    // console.log('_reading', this.filename, positions);
     if (Math.random() < 0.01) {
-      console.log('reading blocks', positions);
+      console.log('reading');
     }
 
-    // console.log('_reading', this.filename, positions);
-    let x = invokeWorker('readBlocks', {
+    if (this.stats) {
+      this.stats.read += positions.length;
+    }
+
+    return invokeWorker('readBlocks', {
       name: this.getStoreName(),
       positions
     });
-    return x;
   }
 
   writeBlocks(writes) {
     // console.log('_writing', this.filename, writes);
+    if (this.stats) {
+      this.stats.writes += writes.length;
+    }
+
     return invokeWorker('writeBlocks', { name: this.getStoreName(), writes });
   }
 }

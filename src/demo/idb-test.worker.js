@@ -6,6 +6,9 @@ let dbFile;
 
 async function init() {
   await backend.init();
+
+  let BFS = new BlockedFS(SQL.FS, backend);
+
   dbFile = backend.createFile('foo.db');
   dbFile.open();
 }
