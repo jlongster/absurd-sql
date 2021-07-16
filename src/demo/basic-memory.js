@@ -13,7 +13,7 @@ function randomBuffer(size) {
   return buffer;
 }
 
-let pageSize = 4096;
+let pageSize = 4096 * 2;
 // let backend = new MemoryBackend(pageSize, {});
 let backend = new IndexedDBBackend(pageSize);
 
@@ -75,7 +75,7 @@ async function populate1() {
   let start = Date.now();
   db.exec('BEGIN TRANSACTION');
   let stmt = db.prepare('INSERT INTO kv (key, value) VALUES (?, ?)');
-  for (let i = 0; i < 1100000; i++) {
+  for (let i = 0; i < 1000000; i++) {
     stmt.run([uuid.v4(), ((Math.random() * 100000) | 0).toString()]);
   }
   db.exec('COMMIT');
@@ -114,18 +114,17 @@ async function commit1() {
 }
 
 async function run() {
+  console.log('running');
   let FS = SQL.FS;
   let db = await getDatabase1();
   // let off = (Math.random() * count) | 0;
   let off = 0;
 
-  console.log(FS.root)
   let { node } = FS.lookupPath('/blocked/db3.sqlite');
   let file = node.contents;
 
-
   db.exec(`
-    PRAGMA cache_size=-50000;
+    --PRAGMA cache_size=-50000;
     PRAGMA journal_mode=MEMORY;
     PRAGMA page_size=${pageSize};
   `);
@@ -134,18 +133,21 @@ async function run() {
 
   file.ops.startStats();
 
-  let stmt = db.prepare(`SELECT COUNT(*) FROM kv`);
+  let stmt = db.prepare(`SELECT value FROM kv ORDER BY rowid`);
+  let i = 0;
   while (stmt.step()) {
-    let row = stmt.getAsObject();
-    if (typeof document !== 'undefined') {
-      let output = document.querySelector('#output');
-      let div = document.createElement('div');
-      div.textContent = JSON.stringify(row);
-      output.appendChild(div);
-    } else {
-      console.log(row);
-    }
+    i++;
+    // let row = stmt.getAsObject();
+    // if (typeof document !== 'undefined') {
+    //   let output = document.querySelector('#output');
+    //   let div = document.createElement('div');
+    //   div.textContent = JSON.stringify(row);
+    //   output.appendChild(div);
+    // } else {
+    //   console.log(row);
+    // }
   }
+  console.log('done', i);
   stmt.free();
 
   console.log('Stats', file.ops.endStats());

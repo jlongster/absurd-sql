@@ -124,7 +124,6 @@ export class File {
       this.meta = {};
 
       // New file
-      console.log('block size', this.defaultBlockSize);
       this.setattr({
         size: 0,
         blockSize: this.defaultBlockSize
@@ -158,13 +157,13 @@ export class File {
 
     let missingChunks = [];
     if (status.missing.length > 0) {
-      missingChunks = this.ops.readBlocks(status.missing);
+      missingChunks = this.ops.readBlocks(status.missing, this.meta.blockSize);
     }
     return status.chunks.concat(missingChunks);
   }
 
   read(bufferView, offset, length, position) {
-    console.log('reading', this.filename, offset, length, position);
+    // console.log('reading', this.filename, offset, length, position);
     let buffer = bufferView.buffer;
 
     if (length <= 0) {
@@ -200,6 +199,7 @@ export class File {
     let view = new Uint8Array(buffer);
     view.set(new Uint8Array(readBuffer), offset);
 
+    // TODO: I don't need to do this. `unixRead` does this for us.
     for (let i = dataLength; i < length; i++) {
       view[offset + i] = 0;
     }
@@ -288,10 +288,9 @@ export class File {
     // TODO: both of these writes should happen in a transaction
 
     if (this.buffer.size > 0) {
-      this.ops.writeBlocks([...this.buffer.values()]);
+      this.ops.writeBlocks([...this.buffer.values()], this.meta.blockSize);
     }
 
-    console.log(this._metaDirty, this.meta);
     if (this._metaDirty) {
       this.ops.writeMeta(this.meta);
       this._metaDirty = false;
@@ -317,6 +316,9 @@ export class File {
     }
 
     if (attr.blockSize !== undefined) {
+      if (this.meta.blockSize != null) {
+        throw new Error('Changing blockSize is not allowed yet');
+      }
       this.meta.blockSize = attr.blockSize;
       this._metaDirty = true;
     }

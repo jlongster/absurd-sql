@@ -1,4 +1,4 @@
-import IndexedDBWorker from './indexeddb.worker.js';
+// import IndexedDBWorker from './indexeddb.worker.js';
 
 let workerReady = null;
 let windowWorker;
@@ -17,8 +17,6 @@ export function startWorker(argBuffer, resultBuffer) {
 
   let onReady;
   workerReady = new Promise(resolve => (onReady = resolve));
-
-  console.log('running');
 
   if (typeof Worker === 'undefined') {
     // No `Worker` available - this context does not support nested
@@ -43,7 +41,8 @@ export function startWorker(argBuffer, resultBuffer) {
       }
     });
   } else {
-    let worker = new IndexedDBWorker();
+    // let worker = new IndexedDBWorker();
+    let worker = new Worker(new URL('./indexeddb.worker.js', import.meta.url));
     windowWorker = worker;
 
     console.log('posting message');

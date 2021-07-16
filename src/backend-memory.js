@@ -36,20 +36,16 @@ export class FileOps {
     this.meta.blockSize = meta.blockSize;
   }
 
-  readBlocks(positions) {
+  readBlocks(positions, blockSize) {
     // console.log('_reading', this.filename, positions);
     let data = this.data;
 
     return positions.map(pos => {
-      let buffer = new ArrayBuffer(this.meta.blockSize);
+      let buffer = new ArrayBuffer(blockSize);
 
       if (pos < data.byteLength) {
         new Uint8Array(buffer).set(
-          new Uint8Array(
-            data,
-            pos,
-            Math.min(this.meta.blockSize, data.byteLength - pos)
-          )
+          new Uint8Array(data, pos, Math.min(blockSize, data.byteLength - pos))
         );
       }
 
@@ -57,7 +53,7 @@ export class FileOps {
     });
   }
 
-  writeBlocks(writes) {
+  writeBlocks(writes, blockSize) {
     // console.log('_writing', this.filename, writes);
     let data = this.data;
 
@@ -98,11 +94,12 @@ export default class MemoryBackend {
         this.defaultBlockSize,
         new FileOps(
           filename,
-          {
-            size: data ? data.byteLength : 0,
-            blockSize: this.defaultBlockSize
-          },
-          data ? data : null
+          data
+            ? {
+                size: data.byteLength,
+                blockSize: this.defaultBlockSize
+              }
+            : null
         )
       );
     }

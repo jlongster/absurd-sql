@@ -3,27 +3,32 @@ import { File } from './virtual-file';
 import { startWorker } from './start-indexeddb-worker';
 
 let argBuffer = new SharedArrayBuffer(4096 * 9);
-let writer = new Writer(argBuffer, { name: 'args', debug: false });
+let writer = new Writer(argBuffer, { name: 'args (backend)', debug: false });
 
 let resultBuffer = new SharedArrayBuffer(4096 * 9);
 let reader = new Reader(resultBuffer, { name: 'results', debug: false });
+
+function positionToKey(pos, blockSize) {
+  // We are forced to round because of floating point error. `pos`
+  // should always be divisible by `blockSize`
+  return Math.round(pos / blockSize);
+}
 
 function invokeWorker(method, args) {
   // console.log('invoking', method, args);
   switch (method) {
     case 'readBlocks': {
-      let { name, positions } = args;
-      writer.string('readBlocks');
-      writer.string(name);
-      for (let pos of positions) {
-        writer.int32(pos);
-      }
-      writer.finalize();
+      let { name, positions, blockSize } = args;
 
       let res = [];
-      while (!reader.done()) {
-        let pos = reader.int32();
+      for (let pos of positions) {
+        writer.string('readBlock');
+        writer.string(name);
+        writer.int32(positionToKey(pos, blockSize));
+        writer.finalize();
+
         let data = reader.bytes();
+        reader.done();
         res.push({ pos, data });
       }
 
@@ -31,11 +36,11 @@ function invokeWorker(method, args) {
     }
 
     case 'writeBlocks': {
-      let { name, writes } = args;
+      let { name, writes, blockSize } = args;
       writer.string('writeBlocks');
       writer.string(name);
       for (let write of writes) {
-        writer.int32(write.pos);
+        writer.int32(positionToKey(write.pos, blockSize));
         writer.bytes(write.data);
       }
       writer.finalize();
@@ -146,10 +151,9 @@ class FileOps {
     return invokeWorker('writeMeta', { name: this.getStoreName(), meta });
   }
 
-  readBlocks(positions) {
-    // console.log('_reading', this.filename, positions);
-    if (Math.random() < 0.01) {
-      console.log('reading');
+  readBlocks(positions, blockSize) {
+    if (Math.random() < 0.005) {
+      console.log('reading', positions);
     }
 
     if (this.stats) {
@@ -158,17 +162,22 @@ class FileOps {
 
     return invokeWorker('readBlocks', {
       name: this.getStoreName(),
-      positions
+      positions,
+      blockSize
     });
   }
 
-  writeBlocks(writes) {
+  writeBlocks(writes, blockSize) {
     // console.log('_writing', this.filename, writes);
     if (this.stats) {
       this.stats.writes += writes.length;
     }
 
-    return invokeWorker('writeBlocks', { name: this.getStoreName(), writes });
+    return invokeWorker('writeBlocks', {
+      name: this.getStoreName(),
+      writes,
+      blockSize
+    });
   }
 }
 

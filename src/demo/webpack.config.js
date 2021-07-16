@@ -20,15 +20,15 @@ function getConfig(name, entry, html) {
         fs: false
       }
     },
-    plugins: [new HtmlWebpackPlugin({ template: html })],
-    module: {
-      rules: [
-        {
-          test: /\.worker\.js$/,
-          use: { loader: 'worker-loader' }
-        }
-      ]
-    }
+    plugins: [new HtmlWebpackPlugin({ template: html })]
+    // module: {
+    //   rules: [
+    //     {
+    //       test: /\.worker\.js$/,
+    //       use: { loader: 'worker-loader', options: { inline: 'no-fallback' } }
+    //     }
+    //   ]
+    // }
   };
 }
 

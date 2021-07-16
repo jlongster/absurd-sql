@@ -64,9 +64,7 @@ import * as fc from 'fast-check';
 
 function checkDone(reader) {
   try {
-    let d = reader.done();
-    console.log('done', d);
-    return d;
+    return reader.done();
   } catch (e) {
     return false;
   }
@@ -97,7 +95,6 @@ describe('reader/writer worker', () => {
         // Readable
         case 1: {
           let item = writeLog.shift();
-          console.log(item);
           if (typeof item === 'string') {
             expect(reader.string()).toBe(item);
           } else if (typeof item === 'number') {
@@ -128,7 +125,6 @@ describe('reader/writer worker', () => {
             writeLog.push(item);
             cur++;
           } else {
-            console.log('finalizing');
             writer.finalize();
           }
           break;

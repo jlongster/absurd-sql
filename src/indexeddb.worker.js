@@ -40,9 +40,9 @@ async function loadDb(name) {
   });
 }
 
-async function getStore(name) {
+async function getStore(name, mode) {
   let db = await loadDb(name);
-  let trans = db.transaction(['data'], 'readwrite');
+  let trans = db.transaction(['data'], mode || 'readwrite');
   return { trans, store: trans.objectStore('data') };
 }
 
@@ -54,6 +54,56 @@ async function get(store, key, mapper = x => x) {
     };
     req.onerror = e => reject(e);
   });
+}
+
+async function lowerBoundCursor(store, lowerBound, cb) {
+  var keyRange = IDBKeyRange.lowerBound(lowerBound);
+
+  let req = store.openCursor(keyRange);
+  req.onsuccess = e => {
+    cb(e.target.result);
+  };
+}
+
+class Cursor {
+  constructor(start) {
+    this._until = null;
+    this._pos = null;
+  }
+
+  run(writer, store, position, cb) {
+    lowerBoundCursor(store, position, cursor => {
+      this.cursor = cursor;
+      let data = cursor ? cursor.value : null;
+      this._pos = data ? data.key : null;
+
+      // if (cursor && this._until && data.key < this._until) {
+      //   cursor.continue();
+      //   return;
+      // } else {
+      if (cursor == null) {
+        writer.bytes(new ArrayBuffer(4096 * 4));
+      } else {
+        writer.bytes(data.value);
+      }
+      writer.finalize();
+
+      this._until = null;
+      cb(cursor ? this : null);
+      // }
+    });
+  }
+
+  until(key) {
+    // TODO: Should we validate that the advanced position matches the
+    // position we are looking for? If not the db is corrupt because it's
+    // missing a block. In fact we probably will move to not storing
+    // the keys in the value anyway, so we won't have that info. If
+    // the db is corrupt there's nothing we can do.
+
+    this._until = key;
+    this.cursor.advance(key - this._pos);
+  }
 }
 
 async function set(store, item) {
@@ -75,25 +125,24 @@ async function bulkSet(trans, store, items) {
   });
 }
 
-async function handleRead(writer, name, position) {
-  let { trans, store } = await getStore(name);
-  let oncomplete = new Promise(resolve => (trans.oncomplete = resolve));
+async function handleRead(writer, name, position, cb) {
+  let { trans, store } = await getStore(name, 'readonly');
 
-  let data = await get(store, position, data => ({
-    pos: position,
-    data: data ? data.value : new ArrayBuffer(4096 * 4)
-  }));
+  // console.log('opening cursor');
 
-  if (trans.commit) {
-    trans.commit();
-  } else {
-    await oncomplete;
-  }
+  let cursor = new Cursor();
+  cursor.run(writer, store, position, cb);
 
-  for (let read of data) {
-    writer.int32(read.pos);
-    writer.bytes(read.data);
-  }
+  // let data = await get(store, position, data => ({
+  //   pos: position,
+  //   data: data ? data.value : new ArrayBuffer(4096 * 4)
+  // }));
+
+  // if (trans.commit) {
+  //   trans.commit();
+  // } else {
+  //   await oncomplete;
+  // }
 }
 
 async function handleWrites(writer, name, writes) {
@@ -172,106 +221,134 @@ async function handleDeleteFile(writer, name) {
   writer.finalize();
 }
 
-async function listen(argBuffer, resultBuffer) {
-  let reader = new Reader(argBuffer, { name: 'args', debug: false });
-  let writer = new Writer(resultBuffer, { name: 'results', debug: false });
-  console.log('listening');
+async function listen(reader, writer) {
+  // reader.wait('loop', 10000);
+  let method = reader.string();
 
-  while (1) {
-    // reader.wait('loop', 10000);
-    let method = reader.string();
-
-    switch (method) {
-      case 'writeBlocks': {
-        let name = reader.string();
-        let writes = [];
-        while (!reader.done()) {
-          let pos = reader.int32();
-          let data = reader.bytes();
-          writes.push({ pos, data });
-        }
-
-        await handleWrites(writer, name, writes);
-        break;
+  switch (method) {
+    case 'writeBlocks': {
+      let name = reader.string();
+      let writes = [];
+      while (!reader.done()) {
+        let pos = reader.int32();
+        let data = reader.bytes();
+        writes.push({ pos, data });
       }
 
-      case 'readBlocks': {
-        let name = reader.string();
-        let positions = [];
-        while (!reader.done()) {
-          let pos = reader.int32();
-          positions.push(pos);
-        }
-
-        for (let pos of positions) {
-          await handleRead(writer, name, pos);
-        }
-        writer.finalize();
-
-        break;
-      }
-
-      case 'readMeta': {
-        let name = reader.string();
-        reader.done();
-        await handleReadMeta(writer, name);
-        break;
-      }
-
-      case 'writeMeta': {
-        let name = reader.string();
-        let size = reader.int32();
-        let blockSize = reader.int32();
-        reader.done();
-        await handleWriteMeta(writer, name, { size, blockSize });
-        break;
-      }
-
-      case 'deleteFile': {
-        let name = reader.string();
-        reader.done();
-
-        await handleDeleteFile(writer, name);
-        break;
-      }
-
-      case 'lockFile': {
-        let name = reader.string();
-        reader.done();
-
-        // Noop
-        writer.int32(0);
-        writer.finalize();
-        break;
-      }
-
-      case 'unlockFile': {
-        let name = reader.string();
-        reader.done();
-
-        // Noop
-        writer.int32(0);
-        writer.finalize();
-        break;
-      }
-
-      // TODO: handle close
-
-      default:
-        throw new Error('Unknown method: ' + method);
+      await handleWrites(writer, name, writes);
+      listen(reader, writer);
+      break;
     }
+
+    case 'readBlock': {
+      let name = reader.string();
+      let pos = reader.int32();
+      reader.done();
+
+      streamRead(writer, name, pos);
+
+      function streamRead(writer, name, pos) {
+        handleRead(writer, name, pos, cursor => {
+          let method = reader.peek(() => reader.string());
+
+          if (method === 'readBlock') {
+            // Pop off the method name since we only peeked it
+            reader.string();
+            let nextName = reader.string();
+            let nextPos = reader.int32();
+            reader.done();
+
+            if (cursor && nextName === name) {
+              if (nextPos > cursor._pos) {
+                // console.log('SUCCESS');
+                cursor.until(nextPos);
+              } else {
+                // console.log('FAIL');
+                let trans = cursor.cursor.request.transaction;
+                if (trans.commit) {
+                  trans.commit();
+                }
+
+                streamRead(writer, name, nextPos);
+              }
+            } else {
+              streamRead(writer, name, nextPos);
+            }
+          } else {
+            listen(reader, writer);
+          }
+        });
+      }
+
+      break;
+    }
+
+    case 'readMeta': {
+      let name = reader.string();
+      reader.done();
+      await handleReadMeta(writer, name);
+      listen(reader, writer);
+      break;
+    }
+
+    case 'writeMeta': {
+      let name = reader.string();
+      let size = reader.int32();
+      let blockSize = reader.int32();
+      reader.done();
+      await handleWriteMeta(writer, name, { size, blockSize });
+      listen(reader, writer);
+      break;
+    }
+
+    case 'deleteFile': {
+      let name = reader.string();
+      reader.done();
+
+      await handleDeleteFile(writer, name);
+      listen(reader, writer);
+      break;
+    }
+
+    case 'lockFile': {
+      let name = reader.string();
+      reader.done();
+
+      // Noop
+      writer.int32(0);
+      writer.finalize();
+
+      listen(reader, writer);
+      break;
+    }
+
+    case 'unlockFile': {
+      let name = reader.string();
+      reader.done();
+
+      // Noop
+      writer.int32(0);
+      writer.finalize();
+
+      listen(reader, writer);
+      break;
+    }
+
+    // TODO: handle close
+
+    default:
+      throw new Error('Unknown method: ' + method);
   }
 }
 
-console.log('running worker');
-
 self.onmessage = msg => {
-  console.log('worker got message', msg);
   switch (msg.data.type) {
     case 'init': {
       postMessage({ type: 'worker-ready' });
       let [argBuffer, resultBuffer] = msg.data.buffers;
-      listen(argBuffer, resultBuffer);
+      let reader = new Reader(argBuffer, { name: 'args', debug: false });
+      let writer = new Writer(resultBuffer, { name: 'results', debug: false });
+      listen(reader, writer);
       break;
     }
   }

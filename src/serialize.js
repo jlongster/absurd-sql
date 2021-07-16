@@ -23,7 +23,7 @@ export class Reader {
     }
   }
 
-  waitWrite() {
+  waitWrite(name) {
     if (this.useAtomics) {
       this.log(`waiting for ${name}`);
 
@@ -34,7 +34,6 @@ export class Reader {
 
       this.log(`resumed for ${name}`);
     } else {
-      console.log('checking', this.atomicView[0]);
       if (this.atomicView[0] !== READABLE) {
         throw new Error('`waitWrite` expected array to be readable');
       }
@@ -42,6 +41,7 @@ export class Reader {
   }
 
   flip() {
+    this.log('flip');
     if (this.useAtomics) {
       let prev = Atomics.compareExchange(
         this.atomicView,
@@ -63,12 +63,10 @@ export class Reader {
   }
 
   done() {
-    this.waitWrite();
+    this.waitWrite('done');
 
     let dataView = new DataView(this.buffer, this.offset);
     let done = dataView.getUint32(0) === FINALIZED;
-
-    console.log('checking', this.offset, dataView.getUint32(0), FINALIZED);
 
     if (done) {
       this.log('done');
@@ -78,8 +76,16 @@ export class Reader {
     return done;
   }
 
+  peek(fn) {
+    this.peekOffset = this.offset;
+    let res = fn();
+    this.offset = this.peekOffset;
+    this.peekOffset = null;
+    return res;
+  }
+
   string() {
-    this.waitWrite();
+    this.waitWrite('string');
 
     let byteLength = this._int32();
     let length = byteLength / 2;
@@ -93,7 +99,10 @@ export class Reader {
     this.log('string', str);
 
     this.offset += byteLength;
-    this.flip();
+
+    if (this.peekOffset == null) {
+      this.flip();
+    }
     return str;
   }
 
@@ -109,15 +118,18 @@ export class Reader {
   }
 
   int32() {
-    this.waitWrite();
+    this.waitWrite('int32');
     let num = this._int32();
     this.log('int32', num);
-    this.flip();
+
+    if (this.peekOffset == null) {
+      this.flip();
+    }
     return num;
   }
 
   bytes() {
-    this.waitWrite();
+    this.waitWrite('bytes');
 
     let byteLength = this._int32();
 
@@ -128,7 +140,10 @@ export class Reader {
     this.log('bytes', bytes);
 
     this.offset += byteLength;
-    this.flip();
+
+    if (this.peekOffset == null) {
+      this.flip();
+    }
     return bytes;
   }
 }
@@ -156,7 +171,7 @@ export class Writer {
   }
 
   log(...args) {
-    if (this.debug || true) {
+    if (this.debug) {
       console.log(`[writer: ${this.name}]`, ...args);
     }
   }
@@ -198,9 +213,8 @@ export class Writer {
   finalize() {
     this.log('finalizing');
     let dataView = new DataView(this.buffer, this.offset);
-    console.log('finalizing (write)', this.offset);
     dataView.setUint32(0, FINALIZED);
-    this.waitRead();
+    this.waitRead('finalize');
   }
 
   string(str) {
@@ -215,7 +229,7 @@ export class Writer {
     }
 
     this.offset += byteLength;
-    this.waitRead();
+    this.waitRead('string');
   }
 
   _int32(num) {
@@ -230,7 +244,7 @@ export class Writer {
   int32(num) {
     this.log('int32', num);
     this._int32(num);
-    this.waitRead();
+    this.waitRead('int32');
   }
 
   bytes(buffer) {
@@ -241,6 +255,6 @@ export class Writer {
     new Uint8Array(this.buffer, this.offset).set(new Uint8Array(buffer));
 
     this.offset += byteLength;
-    this.waitRead();
+    this.waitRead('bytes');
   }
 }
