@@ -133,21 +133,19 @@ async function run() {
 
   file.ops.startStats();
 
-  let stmt = db.prepare(`SELECT value FROM kv ORDER BY rowid`);
-  let i = 0;
+  let stmt = db.prepare(`SELECT COUNT(*) FROM kv ORDER BY rowid DESC`);
   while (stmt.step()) {
-    i++;
-    // let row = stmt.getAsObject();
-    // if (typeof document !== 'undefined') {
-    //   let output = document.querySelector('#output');
-    //   let div = document.createElement('div');
-    //   div.textContent = JSON.stringify(row);
-    //   output.appendChild(div);
-    // } else {
-    //   console.log(row);
-    // }
+    let row = stmt.getAsObject();
+    if (typeof document !== 'undefined') {
+      let output = document.querySelector('#output');
+      let div = document.createElement('div');
+      div.textContent = JSON.stringify(row);
+      output.appendChild(div);
+    } else {
+      console.log(row);
+    }
   }
-  console.log('done', i);
+  console.log('done');
   stmt.free();
 
   console.log('Stats', file.ops.endStats());

@@ -56,54 +56,25 @@ async function get(store, key, mapper = x => x) {
   });
 }
 
-async function lowerBoundCursor(store, lowerBound, cb) {
-  var keyRange = IDBKeyRange.lowerBound(lowerBound);
+async function makeCursor(store, start, dir = 'next', cb) {
+  let keyRange;
+  if (dir === 'prev') {
+    keyRange = IDBKeyRange.upperBound(start);
+  } else {
+    keyRange = IDBKeyRange.lowerBound(start);
+  }
 
-  let req = store.openCursor(keyRange);
+  let req = store.openCursor(keyRange, dir);
   req.onsuccess = e => {
-    cb(e.target.result);
+    try {
+      cb(e.target.result);
+    } catch (e) {
+      console.log(e);
+    }
   };
-}
-
-class Cursor {
-  constructor(start) {
-    this._until = null;
-    this._pos = null;
-  }
-
-  run(writer, store, position, cb) {
-    lowerBoundCursor(store, position, cursor => {
-      this.cursor = cursor;
-      let data = cursor ? cursor.value : null;
-      this._pos = data ? data.key : null;
-
-      // if (cursor && this._until && data.key < this._until) {
-      //   cursor.continue();
-      //   return;
-      // } else {
-      if (cursor == null) {
-        writer.bytes(new ArrayBuffer(4096 * 4));
-      } else {
-        writer.bytes(data.value);
-      }
-      writer.finalize();
-
-      this._until = null;
-      cb(cursor ? this : null);
-      // }
-    });
-  }
-
-  until(key) {
-    // TODO: Should we validate that the advanced position matches the
-    // position we are looking for? If not the db is corrupt because it's
-    // missing a block. In fact we probably will move to not storing
-    // the keys in the value anyway, so we won't have that info. If
-    // the db is corrupt there's nothing we can do.
-
-    this._until = key;
-    this.cursor.advance(key - this._pos);
-  }
+  req.onerror = e => {
+    console.log('cursor error', e);
+  };
 }
 
 async function set(store, item) {
@@ -125,24 +96,25 @@ async function bulkSet(trans, store, items) {
   });
 }
 
-async function handleRead(writer, name, position, cb) {
+async function handleRead(writer, name, position, prevPos, cb) {
   let { trans, store } = await getStore(name, 'readonly');
 
-  // console.log('opening cursor');
+  let dir = prevPos > position ? 'prev' : 'next';
 
-  let cursor = new Cursor();
-  cursor.run(writer, store, position, cb);
+  makeCursor(store, position, dir, cursor => {
+    if (cursor) {
+      let data = cursor ? cursor.value : null;
 
-  // let data = await get(store, position, data => ({
-  //   pos: position,
-  //   data: data ? data.value : new ArrayBuffer(4096 * 4)
-  // }));
+      if (cursor == null) {
+        writer.bytes(new ArrayBuffer(4096 * 4));
+      } else {
+        writer.bytes(data.value);
+      }
+      writer.finalize();
 
-  // if (trans.commit) {
-  //   trans.commit();
-  // } else {
-  //   await oncomplete;
-  // }
+      cb(cursor);
+    }
+  });
 }
 
 async function handleWrites(writer, name, writes) {
@@ -222,7 +194,6 @@ async function handleDeleteFile(writer, name) {
 }
 
 async function listen(reader, writer) {
-  // reader.wait('loop', 10000);
   let method = reader.string();
 
   switch (method) {
@@ -247,8 +218,23 @@ async function listen(reader, writer) {
 
       streamRead(writer, name, pos);
 
-      function streamRead(writer, name, pos) {
-        handleRead(writer, name, pos, cursor => {
+      function streamRead(writer, name, pos, prevPos) {
+        handleRead(writer, name, pos, prevPos, cursor => {
+          // We _could_ timeout here. This is mainly for the case
+          // where there's lots of sequential reads at once. It might
+          // make sense to timeout and jump back into the main
+          // `listen` loop to avoid any weirdness with keeping a
+          // read transaction open for a long time
+          //
+          // TODO: According to
+          // https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Basic_Terminology#gloss_transaction,
+          // the browser may terminate a transaction that takes too
+          // long. That's fine, but we need to handle that case and
+          // check if the cursor is still valid, If not, we need to
+          // start a new cursor
+          //
+          // "Transactions are expected to be short-lived" <- hah
+          // whatever. thank you `Atomics.wait`
           let method = reader.peek(() => reader.string());
 
           if (method === 'readBlock') {
@@ -259,20 +245,23 @@ async function listen(reader, writer) {
             reader.done();
 
             if (cursor && nextName === name) {
-              if (nextPos > cursor._pos) {
+              if (cursor.direction === 'next' && nextPos > cursor.key) {
                 // console.log('SUCCESS');
-                cursor.until(nextPos);
+                cursor.advance(nextPos - cursor.key);
+              } else if (cursor.direction === 'prev' && nextPos < cursor.key) {
+                cursor.advance(cursor.key - nextPos);
               } else {
                 // console.log('FAIL');
-                let trans = cursor.cursor.request.transaction;
+                console.log(cursor.request);
+                let trans = cursor.request.transaction;
                 if (trans.commit) {
                   trans.commit();
                 }
 
-                streamRead(writer, name, nextPos);
+                streamRead(writer, name, nextPos, pos);
               }
             } else {
-              streamRead(writer, name, nextPos);
+              streamRead(writer, name, nextPos, pos);
             }
           } else {
             listen(reader, writer);
