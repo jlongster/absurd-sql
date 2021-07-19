@@ -8,6 +8,7 @@
     "serve-demo": "cd src/demo && ../../node_modules/.bin/webpack serve "
   },
   "dependencies": {
+    "detect-browser": "^5.2.0",
     "sql.js": "file:/Users/james/projects/sql.js",
     "uuid": "^8.3.2"
   },

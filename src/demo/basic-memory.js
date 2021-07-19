@@ -1,4 +1,4 @@
-import initSqlJs from 'sql.js';
+import initSqlJs from 'sql.js/dist/sql-wasm-debug.js';
 import BlockedFS from '../blockedfs';
 import * as uuid from 'uuid';
 import MemoryBackend from '../backend-memory';
@@ -13,17 +13,18 @@ function randomBuffer(size) {
   return buffer;
 }
 
-let pageSize = 4096 * 2;
+let pageSize = 4096;
 // let backend = new MemoryBackend(pageSize, {});
 let backend = new IndexedDBBackend(pageSize);
+let dbName = 'db19.sqlite';
 
 let SQL = null;
 async function init() {
   if (SQL == null) {
     SQL = await initSqlJs({ locateFile: file => file });
-    SQL._register_for_idb();
 
     let BFS = new BlockedFS(SQL.FS, backend);
+    SQL.register_for_idb(BFS);
 
     await BFS.init();
 
@@ -37,28 +38,26 @@ let _db2 = null;
 async function getDatabase1() {
   await init();
   if (_db1 == null) {
-    _db1 = new SQL.CustomDatabase('/blocked/db3.sqlite');
+    _db1 = new SQL.CustomDatabase(`/blocked/${dbName}`);
   }
   return _db1;
-}
-async function getDatabase2() {
-  await init();
-  if (_db2 == null) {
-    _db2 = new SQL.CustomDatabase('/blocked/db3.sqlite');
-  }
-  return _db2;
 }
 
 let count = 500;
 
 async function populate1() {
   let db = await getDatabase1();
+  console.log(pageSize);
   db.exec(`
     -- PRAGMA cache_size=0;
     PRAGMA journal_mode=MEMORY;
     -- PRAGMA locking_mode=EXCLUSIVE;
     PRAGMA page_size=${pageSize};
   `);
+
+  db.exec(`VACUUM`);
+
+  console.log(pageSize, db.exec(`PRAGMA page_size`)[0]);
 
   console.log('1 ---------------------');
 
@@ -91,21 +90,36 @@ async function populate1() {
 }
 
 async function populate2() {
-  let db = await getDatabase2();
+  let db = await getDatabase1();
+
+  db.exec(`
+    PRAGMA journal_mode=MEMORY;
+    PRAGMA page_size=${pageSize};
+  `);
 
   db.exec('BEGIN TRANSACTION');
+  console.log('trans----');
   try {
     let stmt = db.prepare('INSERT INTO kv (key, value) VALUES (?, ?)');
-    console.log('x3');
-    for (let i = 0; i < 3000; i++) {
+    for (let i = 0; i < 2; i++) {
       stmt.run([uuid.v4(), ((Math.random() * 100000) | 0).toString()]);
       console.log('x', i);
     }
+
+    console.log('reading----');
+    let stmt2 = db.prepare(`SELECT key FROM kv LIMIT 1 OFFSET 100`);
+    stmt2.step();
+    console.log(stmt2.getAsObject());
+    stmt2.free();
+    console.log('done----');
+
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
     throw e;
   }
+
+  console.log('done insert');
 }
 
 async function commit1() {
@@ -120,36 +134,40 @@ async function run() {
   // let off = (Math.random() * count) | 0;
   let off = 0;
 
-  let { node } = FS.lookupPath('/blocked/db3.sqlite');
+  let { node } = FS.lookupPath(`/blocked/${dbName}`);
   let file = node.contents;
 
   db.exec(`
-    --PRAGMA cache_size=-50000;
+    PRAGMA cache_size=0;
     PRAGMA journal_mode=MEMORY;
-    PRAGMA page_size=${pageSize};
+    --PRAGMA page_size=${pageSize};
   `);
 
+  console.log('STATS (start)', file.ops.startStats());
+
   let start = Date.now();
+  for (let i = 0; i < 10; i++) {
+    console.log(i);
+    let off = i * 10000;
 
-  file.ops.startStats();
-
-  let stmt = db.prepare(`SELECT COUNT(*) FROM kv ORDER BY rowid DESC`);
-  while (stmt.step()) {
-    let row = stmt.getAsObject();
-    if (typeof document !== 'undefined') {
-      let output = document.querySelector('#output');
-      let div = document.createElement('div');
-      div.textContent = JSON.stringify(row);
-      output.appendChild(div);
-    } else {
-      console.log(row);
+    let stmt = db.prepare(`SELECT key FROM kv LIMIT 500 OFFSET ${off}`);
+    while (stmt.step()) {
+      let row = stmt.getAsObject();
+      if (typeof document !== 'undefined') {
+        let output = document.querySelector('#output');
+        let div = document.createElement('div');
+        div.textContent = JSON.stringify(row);
+        output.appendChild(div);
+      } else {
+        // console.log(row);
+      }
     }
+    stmt.free();
   }
-  console.log('done');
-  stmt.free();
-
-  console.log('Stats', file.ops.endStats());
   console.log('Done reading', Date.now() - start);
+
+  console.log('stats');
+  file.ops.stats();
 }
 
 async function vacuum() {
@@ -188,7 +206,7 @@ let methods = {
 };
 
 if (typeof self !== 'undefined') {
-  console.log('WORKER');
+  console.log('WORKER', Math.random());
   self.onmessage = msg => {
     if (msg.data.type === 'ui-invoke') {
       if (methods[msg.data.name] == null) {

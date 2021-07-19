@@ -1,5 +1,3 @@
-const SQLITE_NOTFOUND = 12;
-
 const ERRNO_CODES = {
   EPERM: 63,
   ENOENT: 44,
@@ -166,12 +164,7 @@ export default class BlockedFS {
       },
       mknod: (parent, name, mode, dev) => {
         if (name.endsWith('.lock')) {
-          let file = this.FS.lookupNode(parent, name.replace(/\.lock$/, ''));
-
-          if (!file.contents.lock()) {
-            // File exists (can't lock)
-            throw new this.FS.ErrnoError(20);
-          }
+          throw new Error('Locking via lockfiles is not supported')
         }
 
         return this.createNode(parent, name, mode, dev);
@@ -182,12 +175,6 @@ export default class BlockedFS {
       unlink: (parent, name) => {
         let node = this.FS.lookupNode(parent, name);
         node.contents.delete(name);
-      },
-      rmdir: (parent, name) => {
-        if (name.endsWith('.lock')) {
-          let file = this.FS.lookupNode(parent, name.replace(/\.lock$/, ''));
-          file.contents.unlock();
-        }
       },
       readdir: node => {
         // We could list all the available databases here if `node` is
@@ -220,7 +207,7 @@ export default class BlockedFS {
       },
 
       read: (stream, buffer, offset, length, position) => {
-        // console.log('read', offset, length, position);
+        console.log('read', offset, length, position);
         return stream.node.contents.read(buffer, offset, length, position);
       },
 
@@ -267,6 +254,17 @@ export default class BlockedFS {
     return this.createNode(null, '/', 16384 /* dir */ | 511 /* 0777 */, 0);
   }
 
+  lock(path, lockType) {
+    console.log('locking', path, lockType)
+    let { node } = this.FS.lookupPath(path)
+    return node.contents.lock(lockType)
+  }
+
+  unlock(path, lockType) {
+    let { node } = this.FS.lookupPath(path)
+    return node.contents.unlock(lockType)
+  }
+
   // TODO: implement lookup for existing files (maybe)
 
   createNode(parent, name, mode, dev) {
@@ -282,7 +280,6 @@ export default class BlockedFS {
         lookup: this.node_ops.lookup,
         unlink: this.node_ops.unlink,
         setattr: this.node_ops.setattr,
-        rmdir: this.node_ops.rmdir
       };
       node.stream_ops = {};
       node.contents = {};

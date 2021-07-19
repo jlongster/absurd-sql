@@ -276,12 +276,12 @@ export class File {
     return length;
   }
 
-  lock() {
-    return this.ops.lock();
+  lock(lockType) {
+    return this.ops.lock(lockType);
   }
 
-  unlock() {
-    return this.ops.unlock();
+  unlock(lockType) {
+    return this.ops.unlock(lockType);
   }
 
   fsync() {

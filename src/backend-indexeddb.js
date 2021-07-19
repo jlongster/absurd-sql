@@ -15,8 +15,23 @@ function positionToKey(pos, blockSize) {
 }
 
 function invokeWorker(method, args) {
-  // console.log('invoking', method, args);
   switch (method) {
+    case 'stats-start': {
+      writer.string('stats-start');
+      writer.finalize();
+      reader.int32();
+      reader.done();
+      break;
+    }
+
+    case 'stats': {
+      writer.string('stats');
+      writer.finalize();
+      reader.int32();
+      reader.done();
+      break;
+    }
+
     case 'readBlocks': {
       let { name, positions, blockSize } = args;
 
@@ -29,7 +44,12 @@ function invokeWorker(method, args) {
 
         let data = reader.bytes();
         reader.done();
-        res.push({ pos, data });
+        res.push({
+          pos,
+          // If th length is 0, the block didn't exist. We return a
+          // blank block in that case
+          data: data.byteLength === 0 ? new ArrayBuffer(blockSize) : data
+        });
       }
 
       return res;
@@ -89,6 +109,7 @@ function invokeWorker(method, args) {
     case 'lockFile': {
       writer.string('lockFile');
       writer.string(args.name);
+      writer.int32(args.lockType);
       writer.finalize();
 
       let res = reader.int32();
@@ -99,11 +120,12 @@ function invokeWorker(method, args) {
     case 'unlockFile': {
       writer.string('unlockFile');
       writer.string(args.name);
+      writer.int32(args.lockType);
       writer.finalize();
 
       let res = reader.int32();
       reader.done();
-      return res;
+      return res === 0;
     }
   }
 }
@@ -114,16 +136,11 @@ class FileOps {
   }
 
   startStats() {
-    this.stats = {
-      read: 0,
-      write: 0
-    };
+    return invokeWorker('stats-start');
   }
 
-  endStats() {
-    let stats = this.stats;
-    this.stats = {};
-    return stats;
+  stats() {
+    return invokeWorker('stats');
   }
 
   getStoreName() {
@@ -131,12 +148,12 @@ class FileOps {
     return this.filename.replace(/\//g, '-');
   }
 
-  lock() {
-    return invokeWorker('lockFile', { name: this.getStoreName() });
+  lock(lockType) {
+    return invokeWorker('lockFile', { name: this.getStoreName(), lockType });
   }
 
-  unlock() {
-    return invokeWorker('unlockFile', { name: this.getStoreName() });
+  unlock(lockType) {
+    return invokeWorker('unlockFile', { name: this.getStoreName(), lockType });
   }
 
   delete() {
@@ -152,9 +169,9 @@ class FileOps {
   }
 
   readBlocks(positions, blockSize) {
-    if (Math.random() < 0.005) {
-      console.log('reading', positions);
-    }
+    // if (Math.random() < 0.005) {
+    //   console.log('reading', positions);
+    // }
 
     if (this.stats) {
       this.stats.read += positions.length;
