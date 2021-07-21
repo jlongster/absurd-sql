@@ -91,6 +91,12 @@ However, `Atomics.wait` is so great. We _also_ use it in the read/write worker t
 
 Because we can keep a transaction for reads over time, we can use IndexedDB cursors to iterate over data when handling sequential read requests. There's a lot of interesting tradeoffs here because opening a cursor is actually super slow in some browsers, but iterating is a lot faster than many `get` requests. This backend will intelligently detect when several sequential reads happen and automatically switch to using a cursor
 
+### Leverage IndexedDB transaction semantics for locking
+
+We fully embrace IndexedDB transaction semantics to ensure correct ordering of read/writes. We map sqlite's lock/unlock requests to transactions in a way that works (still needs to be 100% verified), and the best thing about this is a database can never leave a lock open.
+
+Browsers already handle terminating IDB transactions in weird situations. Because we only rely on IDB transactions, our locks will get properly terminated as well.
+
 ## Browser differences
 
 If you look at the [demo](https://priceless-keller-d097e5.netlify.app/), we insert 1,000,000 items into a database and scan through all of them with a `SELECT COUNT(*) FROM kv)`. This causes a lot of reads. We've recorded a lot of statistics for how IDB performs across browsers and will write out more soon.
