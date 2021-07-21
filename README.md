@@ -5,7 +5,7 @@ It implements a backend for [sql.js](https://github.com/sql-js/sql.js/) (sqlite3
 
 It basically stores a whole database into another database. Which is absurd.
 
-[See the demo]()
+[See the demo](https://priceless-keller-d097e5.netlify.app/)
 
 ## Why do that?
 
@@ -90,7 +90,7 @@ Because we can keep a transaction for reads over time, we can use IndexedDB curs
 
 ## Browser differences
 
-If you look at the [demo](), we insert 1,000,000 items into a database and scan through all of them with a `SELECT COUNT(*) FROM kv)`. This causes a lot of reads. We've recorded a lot of statistics for how IDB performs across browsers and will write out more soon.
+If you look at the [demo](https://priceless-keller-d097e5.netlify.app/), we insert 1,000,000 items into a database and scan through all of them with a `SELECT COUNT(*) FROM kv)`. This causes a lot of reads. We've recorded a lot of statistics for how IDB performs across browsers and will write out more soon.
 
 For now, here are a couple things. This is a graph of all the reads recorded during that SQL query. The X axis is the time at which the read finished (ms), and Y axis is the time the read took (ms). There are a total of ~12500 reads.
 
