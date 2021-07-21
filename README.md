@@ -63,7 +63,7 @@ async function run() {
 
 If you look in your IndexedDB database, you should see something like this:
 
-(img)
+<img width="831" alt="Screen Shot 2021-07-21 at 12 12 26 PM" src="https://user-images.githubusercontent.com/17031/126525517-6b5429db-e4d8-43f0-af48-352a55456995.png">
 
 ## How does it work?
 
@@ -83,6 +83,10 @@ IndexedDB has an awful behavior where it auto-commits transactions once the even
 
 However, `Atomics.wait` is so great. We _also_ use it in the read/write worker to block the process which keeps transactions alive. That means while processing requests from the backend, we can reuse a transaction for all of them. If 1000 reads come through, we will use the same `readonly` transaction for all of them, which is a massive speedup.
 
+### Automatically choosing between `get` and cursors
+
+Because we can keep a transaction for reads over time, we can use IndexedDB cursors to iterate over data when handling sequential read requests. There's a lot of interesting tradeoffs here because opening a cursor is actually super slow in some browsers, but iterating is a lot faster than many `get` requests. This backend will intelligently detect when several sequential reads happen and automatically switch to using a cursor
+
 ## Browser differences
 
 If you look at the [demo](), we insert 1,000,000 items into a database and scan through all of them with a `SELECT COUNT(*) FROM kv)`. This causes a lot of reads. We've recorded a lot of statistics for how IDB performs across browsers and will write out more soon.
@@ -93,11 +97,15 @@ For now, here are a couple things. This is a graph of all the reads recorded dur
 
 Chrome has a p50 read time of .280ms and a total time of ~4.2s:
 
-(img)
+<img width="488" alt="Screen Shot 2021-07-21 at 12 24 24 PM" src="https://user-images.githubusercontent.com/17031/126525556-8e44ec33-4e6e-4c5f-80cd-4a887adfa7cf.png">
 
 ### Firefox
 
 Firefox has a p50 read time .101 and a total time of ~.1.8s:
+
+<img width="490" alt="Screen Shot 2021-07-21 at 12 33 12 PM" src="https://user-images.githubusercontent.com/17031/126525626-325a19bf-94b0-4c63-84ed-ff930483cdd0.png">
+
+Look how nicely consistent that is.
 
 ### Others
 
