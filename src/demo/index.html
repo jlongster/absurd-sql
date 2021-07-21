@@ -51,12 +51,13 @@
   <div class="container">
     <div class="text">
       This is sqlite3 running in your browser with a backend that
-      properly persists the database in IndexedDB. It stores each page
-      from the db as a separate item, treating IDB like a hard disk.
-      It never has to load the full DB into memory and can update it
-      with small individual writes. <strong>It requires
-      SharedArrayBuffer</strong> to be available (we will provide a
-      fallback mode in the future).
+      properly persists the database in IndexedDB
+      (<a href="https://github.com/jlongster/absurd-sql.js-backend">absurd-sql.js-backend</a>).
+      It stores each page from the db as a separate item, treating IDB
+      like a hard disk. It never has to load the full DB into memory
+      and can update it with small individual writes. <strong>It
+      requires SharedArrayBuffer</strong> to be available (we will
+      provide a fallback mode in the future).
     </div>
 
     <div class="text last">

@@ -58,6 +58,9 @@ async function run() {
 
   let db = new SQL.Database('/blocked/db.sqlite', { filename: true });
 
+  // Always use a memory journal; writing it makes no sense
+  db.exec('PRAGMA journal_mode=MEMORY;')
+
   // Use sqlite and never lose data!
 }
 ```
