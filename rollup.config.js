@@ -1,16 +1,23 @@
 import webWorkerLoader from 'rollup-plugin-web-worker-loader';
 
-export default {
-  input: 'src/index.js',
-  output: {
-    // file: 'bundle.js',
-    dir: 'dist',
-    format: 'esm'
-  },
-  plugins: [
-    webWorkerLoader({
-      pattern: /.*\/worker\.js/,
-      targetPlatform: 'browser'
-    })
-  ]
-};
+function getConfig(entry, filename) {
+  return {
+    input: entry,
+    output: {
+      file: `dist/${filename}`,
+      format: 'esm'
+    },
+    plugins: [
+      webWorkerLoader({
+        pattern: /.*\/worker\.js/,
+        targetPlatform: 'browser'
+      })
+    ]
+  };
+}
+
+export default [
+  getConfig('src/index.js', 'index.js'),
+  getConfig('src/memory/backend.js', 'memory-backend.js'),
+  getConfig('src/indexeddb/backend.js', 'indexeddb-backend.js')
+];
