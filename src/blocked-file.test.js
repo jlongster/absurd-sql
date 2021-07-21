@@ -3,8 +3,8 @@ import {
   writeChunks,
   File,
   getBoundaryIndexes
-} from './virtual-file';
-import MemoryBackend from './backend-memory';
+} from './blocked-file';
+import MemoryBackend from './memory/backend';
 import * as fc from 'fast-check';
 
 function toArray(buffer) {
@@ -108,6 +108,7 @@ describe('reading file', () => {
     if (length < 0 || pos < 0) {
       expect(bytesRead).toBe(0);
       expect(toArray(buffer)).toEqual(toArray(zeroBuffer(Math.max(length, 0))));
+
     } else {
       expect(bytesRead).toBe(length);
 

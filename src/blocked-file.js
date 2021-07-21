@@ -1,3 +1,5 @@
+import * as perf from './perf';
+
 function range(start, end, step) {
   let r = [];
   for (let i = start; i <= end; i += step) {
@@ -117,7 +119,6 @@ export class File {
   }
 
   open() {
-    // TODO: All these worker functions need to handle errors better
     this.meta = this.ops.readMeta();
 
     if (this.meta == null) {
@@ -182,6 +183,8 @@ export class File {
       return length;
     }
 
+    perf.record('read');
+
     position = Math.max(position, 0);
     let dataLength = Math.min(length, this.meta.size - position);
 
@@ -204,13 +207,15 @@ export class File {
       view[offset + i] = 0;
     }
 
+    perf.endRecording('read');
+
     return length;
   }
 
   write(bufferView, offset, length, position) {
     // console.log('writing', this.filename, offset, length, position);
-
     let buffer = bufferView.buffer;
+
     if (length <= 0) {
       return 0;
     }
@@ -285,8 +290,6 @@ export class File {
   }
 
   fsync() {
-    // TODO: both of these writes should happen in a transaction
-
     if (this.buffer.size > 0) {
       this.ops.writeBlocks([...this.buffer.values()], this.meta.blockSize);
     }
@@ -328,14 +331,13 @@ export class File {
     return this.meta;
   }
 
-  // repartition(blockSize) {
-  //   // Load it all into memory
-  //   let buffer = this.readAll();
+  startStats() {
+    perf.start();
+    this.ops.startStats();
+  }
 
-  //   this.blockSize = blockSize;
-  //   this.write(allData, 0, allData.byteLength, 0);
-  //   this._metaDirty = true;
-
-  //   this.fsync();
-  // }
+  stats() {
+    perf.end();
+    this.ops.stats();
+  }
 }

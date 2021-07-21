@@ -1,127 +1,17 @@
 const ERRNO_CODES = {
   EPERM: 63,
-  ENOENT: 44,
-  ESRCH: 71,
-  EINTR: 27,
-  EIO: 29,
-  ENXIO: 60,
-  E2BIG: 1,
-  ENOEXEC: 45,
-  EBADF: 8,
-  ECHILD: 12,
-  EAGAIN: 6,
-  EWOULDBLOCK: 6,
-  ENOMEM: 48,
-  EACCES: 2,
-  EFAULT: 21,
-  ENOTBLK: 105,
-  EBUSY: 10,
-  EEXIST: 20,
-  EXDEV: 75,
-  ENODEV: 43,
-  ENOTDIR: 54,
-  EISDIR: 31,
-  EINVAL: 28,
-  ENFILE: 41,
-  EMFILE: 33,
-  ENOTTY: 59,
-  ETXTBSY: 74,
-  EFBIG: 22,
-  ENOSPC: 51,
-  ESPIPE: 70,
-  EROFS: 69,
-  EMLINK: 34,
-  EPIPE: 64,
-  EDOM: 18,
-  ERANGE: 68,
-  ENOMSG: 49,
-  EIDRM: 24,
-  ECHRNG: 106,
-  EL2NSYNC: 156,
-  EL3HLT: 107,
-  EL3RST: 108,
-  ELNRNG: 109,
-  EUNATCH: 110,
-  ENOCSI: 111,
-  EL2HLT: 112,
-  EDEADLK: 16,
-  ENOLCK: 46,
-  EBADE: 113,
-  EBADR: 114,
-  EXFULL: 115,
-  ENOANO: 104,
-  EBADRQC: 103,
-  EBADSLT: 102,
-  EDEADLOCK: 16,
-  EBFONT: 101,
-  ENOSTR: 100,
-  ENODATA: 116,
-  ETIME: 117,
-  ENOSR: 118,
-  ENONET: 119,
-  ENOPKG: 120,
-  EREMOTE: 121,
-  ENOLINK: 47,
-  EADV: 122,
-  ESRMNT: 123,
-  ECOMM: 124,
-  EPROTO: 65,
-  EMULTIHOP: 36,
-  EDOTDOT: 125,
-  EBADMSG: 9,
-  ENOTUNIQ: 126,
-  EBADFD: 127,
-  EREMCHG: 128,
-  ELIBACC: 129,
-  ELIBBAD: 130,
-  ELIBSCN: 131,
-  ELIBMAX: 132,
-  ELIBEXEC: 133,
-  ENOSYS: 52,
-  ENOTEMPTY: 55,
-  ENAMETOOLONG: 37,
-  ELOOP: 32,
-  EOPNOTSUPP: 138,
-  EPFNOSUPPORT: 139,
-  ECONNRESET: 15,
-  ENOBUFS: 42,
-  EAFNOSUPPORT: 5,
-  EPROTOTYPE: 67,
-  ENOTSOCK: 57,
-  ENOPROTOOPT: 50,
-  ESHUTDOWN: 140,
-  ECONNREFUSED: 14,
-  EADDRINUSE: 3,
-  ECONNABORTED: 13,
-  ENETUNREACH: 40,
-  ENETDOWN: 38,
-  ETIMEDOUT: 73,
-  EHOSTDOWN: 142,
-  EHOSTUNREACH: 23,
-  EINPROGRESS: 26,
-  EALREADY: 7,
-  EDESTADDRREQ: 17,
-  EMSGSIZE: 35,
-  EPROTONOSUPPORT: 66,
-  ESOCKTNOSUPPORT: 137,
-  EADDRNOTAVAIL: 4,
-  ENETRESET: 39,
-  EISCONN: 30,
-  ENOTCONN: 53,
-  ETOOMANYREFS: 141,
-  EUSERS: 136,
-  EDQUOT: 19,
-  ESTALE: 72,
-  ENOTSUP: 138,
-  ENOMEDIUM: 148,
-  EILSEQ: 25,
-  EOVERFLOW: 61,
-  ECANCELED: 11,
-  ENOTRECOVERABLE: 56,
-  EOWNERDEAD: 62,
-  ESTRPIPE: 135
+  ENOENT: 44
 };
 
+// This implements an emscripten-compatible filesystem that is means
+// to be mounted to the one from `sql.js`. Example:
+//
+// let BFS = new BlockedFS(SQL.FS, idbBackend);
+// SQL.FS.mount(BFS, {}, '/blocked');
+//
+// Now any files created under '/blocked' will be handled by this
+// filesystem, which creates a special file that handles read/writes
+// in the way that we want.
 export default class BlockedFS {
   constructor(FS, backend) {
     this.FS = FS;
@@ -164,7 +54,7 @@ export default class BlockedFS {
       },
       mknod: (parent, name, mode, dev) => {
         if (name.endsWith('.lock')) {
-          throw new Error('Locking via lockfiles is not supported')
+          throw new Error('Locking via lockfiles is not supported');
         }
 
         return this.createNode(parent, name, mode, dev);
@@ -207,7 +97,7 @@ export default class BlockedFS {
       },
 
       read: (stream, buffer, offset, length, position) => {
-        console.log('read', offset, length, position);
+        // console.log('read', offset, length, position)
         return stream.node.contents.read(buffer, offset, length, position);
       },
 
@@ -255,17 +145,14 @@ export default class BlockedFS {
   }
 
   lock(path, lockType) {
-    console.log('locking', path, lockType)
-    let { node } = this.FS.lookupPath(path)
-    return node.contents.lock(lockType)
+    let { node } = this.FS.lookupPath(path);
+    return node.contents.lock(lockType);
   }
 
   unlock(path, lockType) {
-    let { node } = this.FS.lookupPath(path)
-    return node.contents.unlock(lockType)
+    let { node } = this.FS.lookupPath(path);
+    return node.contents.unlock(lockType);
   }
-
-  // TODO: implement lookup for existing files (maybe)
 
   createNode(parent, name, mode, dev) {
     // Only files and directories supported
@@ -279,7 +166,7 @@ export default class BlockedFS {
         mknod: this.node_ops.mknod,
         lookup: this.node_ops.lookup,
         unlink: this.node_ops.unlink,
-        setattr: this.node_ops.setattr,
+        setattr: this.node_ops.setattr
       };
       node.stream_ops = {};
       node.contents = {};

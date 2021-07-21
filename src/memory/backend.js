@@ -1,4 +1,4 @@
-import { File } from './virtual-file';
+import { File } from '../blocked-file';
 
 export class FileOps {
   constructor(filename, meta = null, data) {
@@ -9,20 +9,19 @@ export class FileOps {
   }
 
   lock() {
-    if (this.locked) {
-      return false;
-    }
-    this.locked = true;
     return true;
   }
 
   unlock() {
-    this.locked = false;
+    return true;
   }
 
   delete() {
     // in-memory noop
   }
+
+  startStats() {}
+  stats() {}
 
   readMeta() {
     return this.meta;
@@ -57,7 +56,13 @@ export class FileOps {
     // console.log('_writing', this.filename, writes);
     let data = this.data;
 
+    console.log('writes', writes.length);
+    let i = 0;
     for (let write of writes) {
+      if (i % 1000 === 0) {
+        console.log('write');
+      }
+      i++;
       let fullLength = write.pos + write.data.byteLength;
 
       if (fullLength > data.byteLength) {
@@ -86,6 +91,7 @@ export default class MemoryBackend {
   async init() {}
 
   createFile(filename) {
+    console.log('creating', filename);
     if (this.files[filename] == null) {
       let data = this.fileData[filename];
 

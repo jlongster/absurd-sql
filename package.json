@@ -1,26 +1,27 @@
 {
-  "name": "shared-syncify",
+  "name": "absurd-sql.js-backend",
   "version": "0.0.1",
+  "main": "./dist/index.js",
   "scripts": {
     "build": "rollup -c rollup.config.js",
     "jest": "jest",
     "jest-debug": "jest --runInBand --useStderr",
     "serve-demo": "cd src/demo && ../../node_modules/.bin/webpack serve "
   },
-  "dependencies": {
-    "detect-browser": "^5.2.0",
-    "sql.js": "file:/Users/james/projects/sql.js",
-    "uuid": "^8.3.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@babel/plugin-transform-modules-commonjs": "^7.14.5",
     "babel": "^6.23.0",
+    "detect-browser": "^5.2.0",
     "eslint": "^7.29.0",
     "fast-check": "^2.17.0",
     "html-webpack-plugin": "^5.3.2",
     "jest": "^27.0.5",
     "rollup": "^2.53.1",
+    "rollup-plugin-extensions": "^0.1.0",
     "rollup-plugin-web-worker-loader": "^1.6.1",
+    "@jlongster/sql.js": "1.6.0",
+    "uuid": "^8.3.2",
     "webpack": "^5.41.1",
     "webpack-cli": "^4.7.2",
     "webpack-dev-server": "^3.11.2",

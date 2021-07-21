@@ -14,27 +14,23 @@ function getConfig(name, entry, html) {
     entry,
     mode: 'development',
     resolve: {
+      extensions: ['.dev.js', '.js', '.json', '.wasm'],
       fallback: {
         crypto: false,
         path: false,
         fs: false
       }
     },
-    plugins: [new HtmlWebpackPlugin({ template: html })]
-    // module: {
-    //   rules: [
-    //     {
-    //       test: /\.worker\.js$/,
-    //       use: { loader: 'worker-loader', options: { inline: 'no-fallback' } }
-    //     }
-    //   ]
-    // }
+    plugins: [new HtmlWebpackPlugin({ template: html })],
+    module: {
+      rules: [
+        {
+          test: /\/worker\.js$/,
+          use: { loader: 'worker-loader' }
+        }
+      ]
+    }
   };
 }
 
-module.exports = [
-  getConfig('basic-memory', './basic-memory.js', './index.html'),
-  getConfig('basic-idb', './basic-idb.js', './index.html'),
-  getConfig('idb-test', './idb-test.js', './idb-test.html'),
-  getConfig('dir', './dir.js', './dir.html')
-];
+module.exports = getConfig('main', './main.js', './index.html');

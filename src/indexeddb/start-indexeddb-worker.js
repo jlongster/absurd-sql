@@ -1,7 +1,6 @@
-// import IndexedDBWorker from './indexeddb.worker.js';
+import IndexedDBWorker from './worker.js';
 
 let workerReady = null;
-let windowWorker;
 
 function isWorker() {
   return (
@@ -41,11 +40,13 @@ export function startWorker(argBuffer, resultBuffer) {
       }
     });
   } else {
-    // let worker = new IndexedDBWorker();
-    let worker = new Worker(new URL('./indexeddb.worker.js', import.meta.url));
-    windowWorker = worker;
+    let worker = new IndexedDBWorker();
 
-    console.log('posting message');
+    // This is another way to load the worker. It won't be inlined
+    // into the script, which might be better for debugging, but makes
+    // it more difficult to distribute.
+    // let worker = new Worker(new URL('./indexeddb.worker.js', import.meta.url));
+
     worker.postMessage({ type: 'init', buffers: [argBuffer, resultBuffer] });
 
     worker.onmessage = msg => {
@@ -54,12 +55,13 @@ export function startWorker(argBuffer, resultBuffer) {
       }
     };
 
-    console.log('waiting to be ready');
     return workerReady;
   }
 }
 
-// This is called from the main thread
+// This is called from the main thread to setup a proxy for spawning
+// workers. It's necessary for browsers that don't support spawning
+// workers from workers (only Safari).
 export function supportNestedWorkers(worker) {
   worker.addEventListener('message', e => {
     if (e.data.type === 'spawn-idb-worker') {

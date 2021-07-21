@@ -9,7 +9,7 @@ export default {
   },
   plugins: [
     webWorkerLoader({
-      pattern: /.*\.worker\.js/,
+      pattern: /.*\/worker\.js/,
       targetPlatform: 'browser'
     })
   ]

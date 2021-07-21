@@ -1,4 +1,4 @@
-import { Reader, Writer } from './serialize';
+import { Reader, Writer } from './shared-channel';
 import * as fc from 'fast-check';
 
 // describe('reader/writer', () => {

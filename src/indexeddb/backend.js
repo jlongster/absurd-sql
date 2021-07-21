@@ -1,12 +1,9 @@
-import { Reader, Writer } from './serialize';
-import { File } from './virtual-file';
+import { Reader, Writer } from './shared-channel';
+import { File } from '../blocked-file';
 import { startWorker } from './start-indexeddb-worker';
 
-let argBuffer = new SharedArrayBuffer(4096 * 9);
-let writer = new Writer(argBuffer, { name: 'args (backend)', debug: false });
-
-let resultBuffer = new SharedArrayBuffer(4096 * 9);
-let reader = new Reader(resultBuffer, { name: 'results', debug: false });
+// These are temporarily global, but will be easy to clean up later
+let reader, writer;
 
 function positionToKey(pos, blockSize) {
   // We are forced to round because of floating point error. `pos`
@@ -144,7 +141,6 @@ class FileOps {
   }
 
   getStoreName() {
-    // TODO: better sanitization
     return this.filename.replace(/\//g, '-');
   }
 
@@ -204,14 +200,16 @@ export default class IndexedDBBackend {
   }
 
   async init() {
+    let argBuffer = new SharedArrayBuffer(4096 * 9);
+    writer = new Writer(argBuffer, { name: 'args (backend)', debug: false });
+
+    let resultBuffer = new SharedArrayBuffer(4096 * 9);
+    reader = new Reader(resultBuffer, { name: 'results', debug: false });
+
     await startWorker(argBuffer, resultBuffer);
   }
 
-  // lookupFile() {
-  // }
-
   createFile(filename) {
-    // let meta = invokeWorker('readMeta', { filename });
     return new File(filename, this.defaultBlockSize, new FileOps(filename));
   }
 }
