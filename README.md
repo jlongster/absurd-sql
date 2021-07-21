@@ -59,7 +59,8 @@ async function run() {
   let db = new SQL.Database('/blocked/db.sqlite', { filename: true });
 
   // Use sqlite and never lose data!
-}```
+}
+```
 
 If you look in your IndexedDB database, you should see something like this:
 
