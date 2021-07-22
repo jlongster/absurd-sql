@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<body>
+  <style type="text/css">
+    html, body, .container {
+      height: 100%;
+    }
+
+    body {
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .output {
+      padding: 15px 10px;
+      font-size: 14px;
+      overflow: auto;
+      flex: 1;
+      border: 1px solid #d0d0fa;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+
+    .comment {
+      margin: 5px;
+      padding: 5px;
+      border: 1px solid black;
+      background-color: #f0f0f0;
+    }
+
+    .text {
+      max-width: 800px;
+      line-height: 1.4em;
+      margin-bottom: 10px;
+    }
+
+    .text.last {
+      margin-bottom: 15px;
+    }
+
+    .search {
+      border: 1px solid #404049;
+      border-radius: 4px;
+      padding: 5px;
+      width: 200px;
+    }
+  </style>
+
+  <div class="container">
+    <div class="text">
+      This is sqlite3 running in your browser with a backend that
+      properly persists the database in IndexedDB
+      (<a href="https://github.com/jlongster/absurd-sql.js-backend">absurd-sql.js-backend</a>).
+    </div>
+
+    <div class="text last">
+      This example shows <strong>full-text search</strong>. It loads
+      the first 10 comments from the top 10 Hacker News stories, and
+      lets you search with
+      the <a href="https://www.sqlite.org/fts3.html#full_text_index_queries">full
+      capabilities</a> of sqlite3's FTS. Note how after you load data,
+      you can refresh the page and still search. All the data is
+      persisted.
+    </div>
+
+    <div style="margin-bottom: 15px">
+      <button id="load">Load data</button> <span style="font-size:13px">(<span class="count">...</span> items currently)</span>
+    </div>
+
+    <div>
+      Search: <input class="search" />
+    </div>
+
+    <div class="output"></div>
+  </div>
+</body>

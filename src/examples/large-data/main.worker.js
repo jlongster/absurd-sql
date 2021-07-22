@@ -1,8 +1,8 @@
 import initSqlJs from '@jlongster/sql.js';
-import { BlockedFS } from '..';
+import { BlockedFS } from '../..';
 import * as uuid from 'uuid';
-import MemoryBackend from '../memory/backend';
-import IndexedDBBackend from '../indexeddb/backend';
+import MemoryBackend from '../../memory/backend';
+import IndexedDBBackend from '../../indexeddb/backend';
 
 // Various global state for the demo
 

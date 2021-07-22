@@ -6,7 +6,7 @@
     "build": "rollup -c rollup.config.js",
     "jest": "jest",
     "jest-debug": "jest --runInBand --useStderr",
-    "serve-demo": "cd src/demo && ../../node_modules/.bin/webpack serve"
+    "serve": "cd src/examples && ../../node_modules/.bin/webpack serve"
   },
   "dependencies": {},
   "devDependencies": {

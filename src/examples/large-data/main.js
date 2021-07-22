@@ -1,4 +1,4 @@
-import { supportNestedWorkers } from '..';
+import { supportNestedWorkers } from '../..';
 
 let worker;
 
