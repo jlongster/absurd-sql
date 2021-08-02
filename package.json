@@ -1,10 +1,10 @@
 {
   "name": "absurd-sql.js-backend",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "main": "./dist/index.cjs.js",
   "module": "./dist/index.esm.js",
   "scripts": {
-    "build": "rollup -c rollup.config.js",
+    "build": "rm -r dist && rollup -c rollup.config.js",
     "jest": "jest",
     "jest-debug": "jest --runInBand --useStderr",
     "serve": "cd src/examples && ../../node_modules/.bin/webpack serve"
