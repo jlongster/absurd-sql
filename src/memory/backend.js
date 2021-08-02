@@ -1,6 +1,6 @@
 import { File } from '../blocked-file';
 
-export class FileOps {
+class FileOps {
   constructor(filename, meta = null, data) {
     this.filename = filename;
     this.locked = false;
