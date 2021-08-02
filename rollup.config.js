@@ -1,11 +1,11 @@
 import webWorkerLoader from 'rollup-plugin-web-worker-loader';
 
-function getConfig(entry, filename, format) {
+function getConfig(entry, filename) {
   return {
     input: entry,
     output: {
       file: `dist/${filename}`,
-      format,
+      format: 'esm',
       exports: 'named'
     },
     plugins: [
@@ -18,10 +18,7 @@ function getConfig(entry, filename, format) {
 }
 
 export default [
-  getConfig('src/index.js', 'index.cjs.js', 'cjs'),
-  getConfig('src/index.js', 'index.esm.js', 'esm'),
-  getConfig('src/memory/backend.js', 'memory-backend.cjs.js', 'cjs'),
-  getConfig('src/memory/backend.js', 'memory-backend.esm.js', 'esm'),
-  getConfig('src/indexeddb/backend.js', 'indexeddb-backend.cjs.js', 'cjs'),
-  getConfig('src/indexeddb/backend.js', 'indexeddb-backend.esm.js', 'esm')
+  getConfig('src/index.js', 'index.js'),
+  getConfig('src/memory/backend.js', 'memory-backend.js'),
+  getConfig('src/indexeddb/backend.js', 'indexeddb-backend.js')
 ];

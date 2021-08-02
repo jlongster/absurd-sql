@@ -456,5 +456,4 @@ class MemoryBackend {
   }
 }
 
-exports.FileOps = FileOps;
 exports.default = MemoryBackend;
