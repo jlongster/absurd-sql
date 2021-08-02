@@ -1,7 +1,8 @@
 {
   "name": "absurd-sql.js-backend",
-  "version": "0.0.1",
-  "main": "./dist/index.js",
+  "version": "0.0.2",
+  "main": "./dist/index.cjs.js",
+  "module": "./dist/index.esm.js",
   "scripts": {
     "build": "rollup -c rollup.config.js",
     "jest": "jest",

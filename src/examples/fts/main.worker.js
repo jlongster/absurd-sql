@@ -122,7 +122,7 @@ async function load() {
           `https://hacker-news.firebaseio.com/v0/item/${commentId}.json?print=pretty`
         );
 
-        if (comment.text) {
+        if (comment && comment.text) {
           results.push({
             id: commentId,
             text: comment.text,
