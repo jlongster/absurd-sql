@@ -1,6 +1,6 @@
 {
   "name": "absurd-sql.js-backend",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "main": "./dist/index.js",
   "scripts": {
     "build": "rm -r dist && rollup -c rollup.config.js",

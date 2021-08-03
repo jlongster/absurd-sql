@@ -829,13 +829,16 @@ class IndexedDBBackend {
 
   async init() {
     let argBuffer = new SharedArrayBuffer(4096 * 9);
-    this.writer = new Writer(argBuffer, {
+    writer = this.writer = new Writer(argBuffer, {
       name: 'args (backend)',
       debug: false
     });
 
     let resultBuffer = new SharedArrayBuffer(4096 * 9);
-    this.reader = new Reader(resultBuffer, { name: 'results', debug: false });
+    reader = this.reader = new Reader(resultBuffer, {
+      name: 'results',
+      debug: false
+    });
 
     await startWorker(argBuffer, resultBuffer);
   }
@@ -845,16 +848,16 @@ class IndexedDBBackend {
   }
 
   startProfile() {
-    writer.string('profile-start');
-    writer.finalize();
+    this.writer.string('profile-start');
+    this.writer.finalize();
     reader.int32();
     reader.done();
   }
 
   stopProfile() {
     end();
-    writer.string('profile-end');
-    writer.finalize();
+    this.writer.string('profile-end');
+    this.writer.finalize();
     reader.int32();
     reader.done();
   }
