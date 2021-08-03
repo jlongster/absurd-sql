@@ -1,5 +1,6 @@
 import { Reader, Writer } from './shared-channel';
 import { File } from '../blocked-file';
+import * as perf from '../perf';
 
 // These are temporarily global, but will be easy to clean up later
 let reader, writer;
@@ -233,15 +234,34 @@ export default class IndexedDBBackend {
 
   async init() {
     let argBuffer = new SharedArrayBuffer(4096 * 9);
-    writer = new Writer(argBuffer, { name: 'args (backend)', debug: false });
+    this.writer = new Writer(argBuffer, {
+      name: 'args (backend)',
+      debug: false
+    });
 
     let resultBuffer = new SharedArrayBuffer(4096 * 9);
-    reader = new Reader(resultBuffer, { name: 'results', debug: false });
+    this.reader = new Reader(resultBuffer, { name: 'results', debug: false });
 
     await startWorker(argBuffer, resultBuffer);
   }
 
   createFile(filename) {
     return new File(filename, this.defaultBlockSize, new FileOps(filename));
+  }
+
+  startProfile() {
+    perf.start();
+    writer.string('profile-start');
+    writer.finalize();
+    reader.int32();
+    reader.done();
+  }
+
+  stopProfile() {
+    perf.end();
+    writer.string('profile-end');
+    writer.finalize();
+    reader.int32();
+    reader.done();
   }
 }

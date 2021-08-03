@@ -348,6 +348,7 @@ async function loadDb(name) {
 function closeDb(name) {
   let openDb = openDbs.get(name);
   if (openDb) {
+    console.log('closing db');
     openDb.close();
     openDbs.delete(name);
   }
@@ -603,7 +604,7 @@ async function listen(reader, writer) {
   let method = reader.string();
 
   switch (method) {
-    case 'stats-start': {
+    case 'profile-start': {
       reader.done();
 
       perf.start();
@@ -614,7 +615,7 @@ async function listen(reader, writer) {
       break;
     }
 
-    case 'stats': {
+    case 'profile-end': {
       reader.done();
 
       await perf.end();

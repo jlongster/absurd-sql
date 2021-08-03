@@ -333,7 +333,6 @@ export class File {
   }
 
   startStats() {
-    perf.start();
     this.ops.startStats();
   }
 

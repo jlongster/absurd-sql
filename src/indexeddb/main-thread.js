@@ -56,10 +56,12 @@ export function initBackend(worker) {
   listenForPerfData(worker);
 
   worker.addEventListener('message', e => {
-    if (e.data.type === 'spawn-idb-worker') {
-      startWorkerFromMain(e.data.argBuffer, e.data.resultBuffer).then(() => {
-        worker.postMessage({ type: 'worker-ready' });
-      });
+    switch (e.data.type) {
+      case 'spawn-idb-worker':
+        startWorkerFromMain(e.data.argBuffer, e.data.resultBuffer).then(() => {
+          worker.postMessage({ type: 'worker-ready' });
+        });
+        break;
     }
   });
 }
