@@ -186,7 +186,7 @@ function appendPerfResults(name, data) {
   }
 }
 
-function listenForPerfData(worker) {
+export function listenForPerfData(worker) {
   worker.addEventListener('message', msg => {
     switch (msg.data.type) {
       case 'clear-perf': {
