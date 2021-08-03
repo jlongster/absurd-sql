@@ -1,9 +1,11 @@
-import { supportNestedWorkers } from '../..';
+import { initBackend } from '../../indexeddb/main-thread';
 
 let worker;
 
 function init() {
   worker = new Worker(new URL('./main.worker.js', import.meta.url));
+  initBackend(worker);
+
   worker.postMessage({ type: 'ui-invoke', name: 'init' });
 
   let output = document.querySelector('.output');
@@ -25,11 +27,9 @@ function init() {
       worker.postMessage({ type: 'options', name, value });
     });
   }
-
-  supportNestedWorkers(worker);
 }
 
-let methods = ['init', 'populate', 'countAll', 'randomReads'];
+let methods = ['init', 'populate', 'countAll', 'randomReads', 'deleteFile'];
 
 for (let method of methods) {
   let btn = document.querySelector(`#${method}`);

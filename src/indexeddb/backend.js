@@ -1,6 +1,5 @@
 import { Reader, Writer } from './shared-channel';
 import { File } from '../blocked-file';
-import { startWorker } from './start-indexeddb-worker';
 
 // These are temporarily global, but will be easy to clean up later
 let reader, writer;
@@ -103,6 +102,16 @@ function invokeWorker(method, args) {
       return res;
     }
 
+    case 'closeFile': {
+      writer.string('closeFile');
+      writer.string(args.name);
+      writer.finalize();
+
+      let res = reader.int32();
+      reader.done();
+      return res;
+    }
+
     case 'lockFile': {
       writer.string('lockFile');
       writer.string(args.name);
@@ -153,7 +162,11 @@ class FileOps {
   }
 
   delete() {
-    invokeWorker('deleteFile', { name: this.getStoreName() });
+    return invokeWorker('deleteFile', { name: this.getStoreName() });
+  }
+
+  close() {
+    return invokeWorker('closeFile', { name: this.getStoreName() });
   }
 
   readMeta() {
@@ -192,6 +205,25 @@ class FileOps {
       blockSize
     });
   }
+}
+
+function startWorker(argBuffer, resultBuffer) {
+  let onReady;
+  let workerReady = new Promise(resolve => (onReady = resolve));
+
+  self.postMessage({
+    type: 'spawn-idb-worker',
+    argBuffer,
+    resultBuffer
+  });
+
+  self.addEventListener('message', e => {
+    if (e.data.type === 'worker-ready') {
+      onReady();
+    }
+  });
+
+  return workerReady;
 }
 
 export default class IndexedDBBackend {

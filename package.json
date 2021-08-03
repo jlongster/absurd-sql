@@ -1,6 +1,6 @@
 {
   "name": "absurd-sql.js-backend",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "main": "./dist/index.js",
   "scripts": {
     "build": "rm -r dist && rollup -c rollup.config.js",
@@ -11,6 +11,9 @@
   "dependencies": {},
   "devDependencies": {
     "@babel/plugin-transform-modules-commonjs": "^7.14.5",
+    "@jlongster/sql.js": "1.6.0",
+    "@observablehq/plot": "^0.1.0",
+    "@rollup/plugin-node-resolve": "^13.0.4",
     "babel": "^6.23.0",
     "detect-browser": "^5.2.0",
     "eslint": "^7.29.0",
@@ -20,7 +23,6 @@
     "rollup": "^2.53.1",
     "rollup-plugin-extensions": "^0.1.0",
     "rollup-plugin-web-worker-loader": "^1.6.1",
-    "@jlongster/sql.js": "1.6.0",
     "uuid": "^8.3.2",
     "webpack": "^5.41.1",
     "webpack-cli": "^4.7.2",

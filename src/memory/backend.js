@@ -16,6 +16,10 @@ class FileOps {
     return true;
   }
 
+  close() {
+    return true;
+  }
+
   delete() {
     // in-memory noop
   }

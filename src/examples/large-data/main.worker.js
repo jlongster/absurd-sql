@@ -1,4 +1,4 @@
-import initSqlJs from '@jlongster/sql.js';
+import initSqlJs from '@jlongster/sql.js/dist/sql-wasm-debug.js';
 import { BlockedFS } from '../..';
 import * as uuid from 'uuid';
 import MemoryBackend from '../../memory/backend';
@@ -197,7 +197,7 @@ async function randomReads() {
     throw err;
   }
 
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 8; i++) {
     let off = i * 10000;
     stmt.bind([off]);
     output('Using offset: ' + formatNumber(off));
@@ -227,11 +227,29 @@ async function randomReads() {
   file.stats();
 }
 
+async function deleteFile() {
+  await init();
+  let filepath = `/blocked/${getDBName()}`;
+
+  let exists = true;
+  try {
+    SQL.FS.stat(filepath);
+  } catch (e) {
+    exists = false;
+  }
+
+  if (exists) {
+    SQL.FS.unlink(filepath);
+  }
+  _db = null;
+}
+
 let methods = {
   init,
   populate,
   countAll,
-  randomReads
+  randomReads,
+  deleteFile
 };
 
 if (typeof self !== 'undefined') {

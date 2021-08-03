@@ -1,24 +1,6 @@
-import { detect } from 'detect-browser';
-
-const browser = detect();
-
-let token = '';
-let sheetId = '1p1isUZkWe8oc12LL0kqaT3UFT_MR8vEoEieEruHW-xE';
-
 let buffer = 40000;
 let baseTime;
 let timings = {};
-
-let range;
-if (browser.name === 'chrome') {
-  range = 'A3';
-} else if (browser.name === 'safari') {
-  range = 'D3';
-} else if (browser.name === 'firefox') {
-  range = 'G3';
-} else {
-  throw new Error('Unknown browser: ' + browser.name);
-}
 
 const descriptions = {
   get: 'Calls to `store.get`',
@@ -31,63 +13,32 @@ function last(arr) {
   return arr.length === 0 ? null : arr[arr.length - 1];
 }
 
-function percentile(data, p) {
-  let sorted = [...data];
-  sorted.sort((n1, n2) => n1[1] - n2[1]);
-  return sorted.slice(0, Math.ceil(sorted.length * p) | 0);
-}
-
 let showWarning = true;
 
-async function writeData(sheetName, data) {
-  let arr = percentile(data, 0.95);
+async function writeData(name, data) {
+  self.postMessage({ type: 'log-perf', name, data });
 
-  if (arr.length > buffer) {
-    arr = arr.slice(-buffer);
-  } else {
-    while (arr.length < buffer) {
-      arr.push(['', '']);
-    }
-  }
-
-  let res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!${range}?valueInputOption=USER_ENTERED`,
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ values: arr })
-    }
-  );
-  if (res.status == 200) {
-    console.log(`Logged timings to spreadsheet (${sheetName}))`);
-  } else {
-    if (showWarning) {
-      showWarning = false;
-      console.warn(
-        'Unable to log perf data to spreadsheet. Is the OAuth token expired?'
-      );
-    }
-
-    console.log(`--- ${sheetName} (${descriptions[sheetName]}) ---`);
-    console.log(`Count: ${data.length}`);
-    console.log(`p50: ${last(percentile(data, 0.5))[1]}`);
-    console.log(`p95: ${last(percentile(data, 0.95))[1]}`);
-  }
+  // console.log(`--- ${sheetName} (${descriptions[sheetName]}) ---`);
+  // console.log(`Count: ${data.length}`);
+  // console.log(`p50: ${last(percentile(data, 0.5))[1]}`);
+  // console.log(`p95: ${last(percentile(data, 0.95))[1]}`);
 }
 
 export async function end() {
   await Promise.all(
     Object.keys(timings).map(name => {
       let timing = timings[name];
-      return writeData(name, timing.data.map(x => [x.start + x.took, x.took]));
+      return writeData(
+        name,
+        timing.data.map(x => ({ x: x.start + x.took, y: x.took }))
+      );
     })
   );
 }
 
 export function start() {
+  self.postMessage({ type: 'clear-perf' });
+
   timings = {};
   baseTime = performance.now();
 }

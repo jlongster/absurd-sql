@@ -136,6 +136,7 @@ export class File {
 
   close() {
     this.fsync();
+    this.ops.close()
   }
 
   delete() {

@@ -313,6 +313,8 @@ async function loadDb(name) {
       return;
     }
 
+    console.log('opening', name);
+
     let req = globalThis.indexedDB.open(name, 1);
     req.onsuccess = event => {
       console.log('db is open!', name);
@@ -322,6 +324,7 @@ async function loadDb(name) {
         // TODO: Notify the user somehow
         console.log('closing because version changed');
         db.close();
+        openDbs.delete(name);
       };
 
       db.onclose = () => {
@@ -340,6 +343,14 @@ async function loadDb(name) {
     req.onblocked = e => console.log('blocked', e);
     req.onerror = req.onabort = e => reject(e.target.error);
   });
+}
+
+function closeDb(name) {
+  let openDb = openDbs.get(name);
+  if (openDb) {
+    openDb.close();
+    openDbs.delete(name);
+  }
 }
 
 function getTransaction(name) {
@@ -559,7 +570,26 @@ async function handleWriteMeta(writer, name, meta) {
 }
 
 async function handleDeleteFile(writer, name) {
-  // TODO: Handle this
+  try {
+    closeDb(name);
+
+    await new Promise((resolve, reject) => {
+      let req = globalThis.indexedDB.deleteDatabase(name);
+      req.onsuccess = resolve;
+      req.onerror = reject;
+    });
+
+    writer.int32(0);
+    writer.finalize();
+  } catch (err) {
+    writer.int32(-1);
+    writer.finalize();
+  }
+}
+
+async function handleCloseFile(writer, name) {
+  closeDb(name);
+
   writer.int32(0);
   writer.finalize();
 }
@@ -642,6 +672,15 @@ async function listen(reader, writer) {
       reader.done();
 
       await handleDeleteFile(writer, name);
+      listen(reader, writer);
+      break;
+    }
+
+    case 'closeFile': {
+      let name = reader.string();
+      reader.done();
+
+      await handleCloseFile(writer, name);
       listen(reader, writer);
       break;
     }
