@@ -9,7 +9,7 @@
   dependencies:
     "@babel/highlight" "^7.10.4"
 
-"@babel/code-frame@^7.12.13", "@babel/code-frame@^7.14.5":
+"@babel/code-frame@^7.10.4", "@babel/code-frame@^7.12.13", "@babel/code-frame@^7.14.5":
   version "7.14.5"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.14.5.tgz#23b08d740e83f49c5e59945fbf1b43e80bbf4edb"
   integrity sha512-9pzDqyc6OLDaqe+zbACgFkb6fKMNG6CObKpnYXChRsvYGyEdc7CA2BaqeOM+vOtCS5ndmJicPJhKAwYRI6UfFw==
@@ -536,6 +536,13 @@
   dependencies:
     d3 "^6.7.0"
     isoformat "^0.1.0"
+
+"@rollup/plugin-alias@^3.1.5":
+  version "3.1.5"
+  resolved "https://registry.yarnpkg.com/@rollup/plugin-alias/-/plugin-alias-3.1.5.tgz#73356a3a1eab2e1e2fd952f9f53cd89fc740d952"
+  integrity sha512-yzUaSvCC/LJPbl9rnzX3HN7vy0tq7EzHoEiQl1ofh4n5r2Rd5bj/+zcJgaGA76xbw95/JjWQyvHg9rOJp2y0oQ==
+  dependencies:
+    slash "^3.0.0"
 
 "@rollup/plugin-node-resolve@^13.0.4":
   version "13.0.4"
@@ -3789,6 +3796,15 @@ jest-watcher@^27.0.2:
     jest-util "^27.0.2"
     string-length "^4.0.1"
 
+jest-worker@^26.2.1:
+  version "26.6.2"
+  resolved "https://registry.yarnpkg.com/jest-worker/-/jest-worker-26.6.2.tgz#7f72cbc4d643c365e27b9fd775f9d0eaa9c7a8ed"
+  integrity sha512-KWYVV1c4i+jbMpaBC+U++4Va0cp8OisU185o73T1vo99hqi7w8tSJfUXYswwqqrjzwxa6KpRK54WhPvwf5w6PQ==
+  dependencies:
+    "@types/node" "*"
+    merge-stream "^2.0.0"
+    supports-color "^7.0.0"
+
 jest-worker@^27.0.2:
   version "27.0.2"
   resolved "https://registry.yarnpkg.com/jest-worker/-/jest-worker-27.0.2.tgz#4ebeb56cef48b3e7514552f80d0d80c0129f0b05"
@@ -4931,6 +4947,16 @@ rollup-plugin-extensions@^0.1.0:
   resolved "https://registry.yarnpkg.com/rollup-plugin-extensions/-/rollup-plugin-extensions-0.1.0.tgz#a2e6922232245e1355ebe6972a89e57390d29cbb"
   integrity sha512-d7RzW7iiiHNYRsqe3W2GTz9bClIVm9J3mbHQqetsCZHpPPgDfo/OpXmwiziyMhm3bgiJTswxqw4QNr6qX4NfHA==
 
+rollup-plugin-terser@^7.0.2:
+  version "7.0.2"
+  resolved "https://registry.yarnpkg.com/rollup-plugin-terser/-/rollup-plugin-terser-7.0.2.tgz#e8fbba4869981b2dc35ae7e8a502d5c6c04d324d"
+  integrity sha512-w3iIaU4OxcF52UUXiZNsNeuXIMDvFrr+ZXK6bFZ0Q60qyVfq4uLptoS4bbq3paG3x216eQllFZX7zt6TIImguQ==
+  dependencies:
+    "@babel/code-frame" "^7.10.4"
+    jest-worker "^26.2.1"
+    serialize-javascript "^4.0.0"
+    terser "^5.0.0"
+
 rollup-plugin-web-worker-loader@^1.6.1:
   version "1.6.1"
   resolved "https://registry.yarnpkg.com/rollup-plugin-web-worker-loader/-/rollup-plugin-web-worker-loader-1.6.1.tgz#9d7a27575b64b0780fe4e8b3bc87470d217e485f"
@@ -5042,6 +5068,13 @@ send@0.17.1:
     on-finished "~2.3.0"
     range-parser "~1.2.1"
     statuses "~1.5.0"
+
+serialize-javascript@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/serialize-javascript/-/serialize-javascript-4.0.0.tgz#b525e1238489a5ecfc42afacc3fe99e666f4b1aa"
+  integrity sha512-GaNA54380uFefWghODBWEGisLZFj00nS5ACs6yHa9nLqlLpVLO8ChDGeKRjZnV4Nh4n0Qi7nhYZD/9fCPzEqkw==
+  dependencies:
+    randombytes "^2.1.0"
 
 serialize-javascript@^6.0.0:
   version "6.0.0"
@@ -5471,7 +5504,7 @@ terser@^4.6.3:
     source-map "~0.6.1"
     source-map-support "~0.5.12"
 
-terser@^5.7.0:
+terser@^5.0.0, terser@^5.7.0:
   version "5.7.1"
   resolved "https://registry.yarnpkg.com/terser/-/terser-5.7.1.tgz#2dc7a61009b66bb638305cb2a824763b116bf784"
   integrity sha512-b3e+d5JbHAe/JSjwsC3Zn55wsBIM7AsHLjKxT31kGCldgbpFePaFo+PiddtO6uwRZWRw7sPXmAN8dTW61xmnSg==

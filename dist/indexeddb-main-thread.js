@@ -1,3 +1,12 @@
+// The reason for this strange abstraction is because we can't rely on
+// nested worker support (Safari doesn't support it). We need to proxy
+// creating a child worker through the main thread, and this requires
+// a bit of glue code. We don't want to duplicate this code in each
+// backend that needs it, so this module abstracts it out. It has to
+// have a strange shape because we don't want to eagerly bundle the
+// backend code, so users of this code need to pass an `() =>
+// import('worker.js')` expression to get the worker module to run.
+
 function isWorker() {
   return (
     typeof WorkerGlobalScope !== 'undefined' &&
@@ -5,59 +14,62 @@ function isWorker() {
   );
 }
 
-function startWorkerFromMain(argBuffer, resultBuffer, parentWorker) {
-  if (isWorker()) {
-    throw new Error(
-      '`startWorkerFromMain` should only be called from the main thread'
-    );
-  }
+function makeStartWorkerFromMain(getModule) {
+  return (argBuffer, resultBuffer, parentWorker) => {
+    if (isWorker()) {
+      throw new Error(
+        '`startWorkerFromMain` should only be called from the main thread'
+      );
+    }
 
-  if (typeof Worker === 'undefined') {
-    // We're on the main thread? Weird: it doesn't have workers
-    throw new Error(
-      'Web workers not available. sqlite3 requires web workers to work.'
-    );
-  }
+    if (typeof Worker === 'undefined') {
+      // We're on the main thread? Weird: it doesn't have workers
+      throw new Error(
+        'Web workers not available. sqlite3 requires web workers to work.'
+      );
+    }
 
-  import('./indexeddb-main-thread-worker-ef816922.js').then(({ default: IndexedDBWorker }) => {
-    let worker = new IndexedDBWorker();
-    // listenForPerfData(worker);
+    getModule().then(({ default: BackendWorker }) => {
+      let worker = new BackendWorker();
 
-    // This is another way to load the worker. It won't be inlined
-    // into the script, which might be better for debugging, but makes
-    // it more difficult to distribute.
-    // let worker = new Worker(new URL('./indexeddb.worker.js', import.meta.url));
+      worker.postMessage({ type: 'init', buffers: [argBuffer, resultBuffer] });
 
-    worker.postMessage({ type: 'init', buffers: [argBuffer, resultBuffer] });
-
-    worker.addEventListener('message', msg => {
-      // Forward any messages to the worker that's supposed
-      // to be the parent
-      parentWorker.postMessage(msg.data);
+      worker.addEventListener('message', msg => {
+        // Forward any messages to the worker that's supposed
+        // to be the parent
+        parentWorker.postMessage(msg.data);
+      });
     });
-  });
+  };
 }
 
 let hasInitialized = false;
 
-function initBackend(worker) {
-  if (hasInitialized) {
-    return;
-  }
-  hasInitialized = true;
+function makeInitBackend(spawnEventName, getModule) {
+  const startWorkerFromMain = makeStartWorkerFromMain(getModule);
 
-  worker.addEventListener('message', e => {
-    switch (e.data.type) {
-      case '__absurd:spawn-idb-worker':
-        startWorkerFromMain(e.data.argBuffer, e.data.resultBuffer, worker);
-        break;
+  return worker => {
+    if (hasInitialized) {
+      return;
     }
-  });
+    hasInitialized = true;
 
-  // if(true) {
-  //   window.__startProfile = () => {
-  //   }
-  // }
+    worker.addEventListener('message', e => {
+      switch (e.data.type) {
+        case spawnEventName:
+          startWorkerFromMain(e.data.argBuffer, e.data.resultBuffer, worker);
+          break;
+      }
+    });
+  };
 }
+
+// TODO: Strip the comments and minimize the worker
+
+// Use the generic main thread module to create our indexeddb worker
+// proxy
+const initBackend = makeInitBackend('__absurd:spawn-idb-worker', () =>
+  import('./indexeddb-main-thread-worker-662a7d64.js')
+);
 
 export { initBackend };

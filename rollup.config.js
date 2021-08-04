@@ -1,5 +1,8 @@
+import * as path from 'path';
 import webWorkerLoader from 'rollup-plugin-web-worker-loader';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
+import alias from '@rollup/plugin-alias';
+import { terser } from "rollup-plugin-terser";
 
 function getConfig(entry, filename, perf) {
   // Remove the extension
@@ -14,17 +17,24 @@ function getConfig(entry, filename, perf) {
       format: 'esm',
       exports: 'named'
     },
-    external: ['perf-deets'],
     plugins: [
+      !perf &&
+        alias({
+          entries: {
+            'perf-deets': path.resolve(__dirname, './src/perf-deets-noop.js')
+          }
+        }),
       webWorkerLoader({
         pattern: /.*\/worker\.js/,
         targetPlatform: 'browser',
-        external: []
+        external: [],
+        plugins: [terser()]
       }),
       nodeResolve({
         extensions: (perf ? ['.dev.js'] : []).concat(['.js'])
       })
-    ]
+    ],
+    ...(perf ? { external: ['perf-deets'] } : {})
   };
 }
 
