@@ -1,18 +1,17 @@
 {
   "name": "absurd-sql.js-backend",
-  "version": "0.0.13",
+  "version": "0.0.22",
   "main": "./dist/index.js",
   "scripts": {
-    "build": "rm -r dist && rollup -c rollup.config.js",
+    "build": "rm -rf dist && rollup -c rollup.config.js",
     "jest": "jest",
     "jest-debug": "jest --runInBand --useStderr",
     "serve": "cd src/examples && ../../node_modules/.bin/webpack serve"
   },
-  "dependencies": {},
   "devDependencies": {
+    "perf-deets": "^1.0.10",
     "@babel/plugin-transform-modules-commonjs": "^7.14.5",
     "@jlongster/sql.js": "1.6.0",
-    "@observablehq/plot": "^0.1.0",
     "@rollup/plugin-node-resolve": "^13.0.4",
     "babel": "^6.23.0",
     "detect-browser": "^5.2.0",

@@ -1,5 +1,5 @@
 import { Reader, Writer } from './shared-channel';
-import * as perf from '../perf';
+import * as perf from 'perf-deets';
 
 let isProbablySafari = /^((?!chrome|android).)*safari/i.test(
   navigator.userAgent
@@ -29,6 +29,7 @@ let LOCK_TYPES = {
 class Transaction {
   constructor(db, initialMode = 'readonly') {
     this.db = db;
+    perf.count('transactions');
     this.trans = this.db.transaction(['data'], initialMode);
     this.store = this.trans.objectStore('data');
     this.lockType =
@@ -101,6 +102,7 @@ class Transaction {
     this.commit();
 
     // console.log('updating transaction readwrite');
+    perf.count('transactions');
     this.trans = this.db.transaction(['data'], 'readwrite');
     this.store = this.trans.objectStore('data');
     this.lockType = LOCK_TYPES.EXCLUSIVE;
@@ -128,6 +130,7 @@ class Transaction {
     this.commit();
 
     // console.log('downgrading transaction readonly');
+    perf.count('transactions');
     this.trans = this.db.transaction(['data'], 'readonly');
     this.store = this.trans.objectStore('data');
     this.lockType = LOCK_TYPES.SHARED;
@@ -615,10 +618,13 @@ async function listen(reader, writer) {
       break;
     }
 
-    case 'profile-end': {
+    case 'profile-stop': {
       reader.done();
 
-      await perf.end();
+      perf.stop();
+      // The perf library posts a message; make sure it has time to
+      // actually post it before blocking the thread again
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       writer.int32(0);
       writer.finalize();
@@ -714,7 +720,7 @@ async function listen(reader, writer) {
 self.onmessage = msg => {
   switch (msg.data.type) {
     case 'init': {
-      postMessage({ type: 'worker-ready' });
+      postMessage({ type: '__absurd:worker-ready' });
       let [argBuffer, resultBuffer] = msg.data.buffers;
       let reader = new Reader(argBuffer, { name: 'args', debug: false });
       let writer = new Writer(resultBuffer, { name: 'results', debug: false });

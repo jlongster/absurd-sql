@@ -147,9 +147,7 @@ async function populate() {
 async function countAll() {
   let db = await getDatabase();
 
-  let { node } = SQL.FS.lookupPath(`/blocked/${getDBName()}`);
-  let file = node.contents;
-  file.startStats();
+  BFS.backend.startProfile();
 
   output('Running <code>SELECT COUNT(*) FROM kv</code>');
   let start = Date.now();
@@ -174,15 +172,13 @@ async function countAll() {
   );
   output('That just scanned through all 50MB of data!');
 
-  file.stats();
+  BFS.backend.stopProfile();
 }
 
 async function randomReads() {
   let db = await getDatabase();
 
-  let { node } = SQL.FS.lookupPath(`/blocked/${getDBName()}`);
-  let file = node.contents;
-  file.startStats();
+  BFS.backend.startProfile();
 
   output(
     'Running <code>SELECT key FROM kv LIMIT 1000 OFFSET ?</code> 20 times with increasing offset'
@@ -224,7 +220,7 @@ async function randomReads() {
       'ms (detailed stats in console)'
   );
 
-  file.stats();
+  BFS.backend.stopProfile();
 }
 
 async function deleteFile() {
@@ -256,11 +252,9 @@ if (typeof self !== 'undefined') {
   self.onmessage = msg => {
     switch (msg.data.type) {
       case 'ui-invoke':
-        console.log(msg.data);
         if (methods[msg.data.name] == null) {
           throw new Error('Unknown method: ' + msg.data.name);
         }
-        console.log(msg.data.name);
         methods[msg.data.name]();
         break;
 

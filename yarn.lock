@@ -4552,6 +4552,13 @@ path-to-regexp@0.1.7:
   resolved "https://registry.yarnpkg.com/path-to-regexp/-/path-to-regexp-0.1.7.tgz#df604178005f522f15eb4490e7247a1bfaa67f8c"
   integrity sha1-32BBeABfUi8V60SQ5yR6G/qmf4w=
 
+perf-deets@^1.0.10:
+  version "1.0.10"
+  resolved "https://registry.yarnpkg.com/perf-deets/-/perf-deets-1.0.10.tgz#daaf134692a2577e2cb4575da7cd2ab87deb08a3"
+  integrity sha512-7lCJX4LFFIl2o7Ckgq0YvsWyU5ZCABDKXMIr3Da/DpnOft/DBZLmKQSZV9CCeR7yFUbtROM/cQl8btOnT5j0nw==
+  dependencies:
+    "@observablehq/plot" "^0.1.0"
+
 picomatch@^2.0.4, picomatch@^2.2.2, picomatch@^2.2.3:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-2.3.0.tgz#f1f061de8f6a4bf022892e2d128234fb98302972"

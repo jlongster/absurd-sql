@@ -1,6 +1,6 @@
 import { Reader, Writer } from './shared-channel';
 import { File } from '../blocked-file';
-import * as perf from '../perf';
+import * as perf from 'perf-deets';
 
 // These are temporarily global, but will be easy to clean up later
 let reader, writer;
@@ -13,22 +13,6 @@ function positionToKey(pos, blockSize) {
 
 function invokeWorker(method, args) {
   switch (method) {
-    case 'stats-start': {
-      writer.string('stats-start');
-      writer.finalize();
-      reader.int32();
-      reader.done();
-      break;
-    }
-
-    case 'stats': {
-      writer.string('stats');
-      writer.finalize();
-      reader.int32();
-      reader.done();
-      break;
-    }
-
     case 'readBlocks': {
       let { name, positions, blockSize } = args;
 
@@ -142,14 +126,6 @@ class FileOps {
     this.filename = filename;
   }
 
-  startStats() {
-    return invokeWorker('stats-start');
-  }
-
-  stats() {
-    return invokeWorker('stats');
-  }
-
   getStoreName() {
     return this.filename.replace(/\//g, '-');
   }
@@ -208,19 +184,42 @@ class FileOps {
   }
 }
 
-function startWorker(argBuffer, resultBuffer) {
+function startWorker(reader, writer) {
   let onReady;
   let workerReady = new Promise(resolve => (onReady = resolve));
 
   self.postMessage({
-    type: 'spawn-idb-worker',
-    argBuffer,
-    resultBuffer
+    type: '__absurd:spawn-idb-worker',
+    argBuffer: writer.buffer,
+    resultBuffer: reader.buffer
   });
 
   self.addEventListener('message', e => {
-    if (e.data.type === 'worker-ready') {
-      onReady();
+    switch (e.data.type) {
+      case '__absurd:worker-ready':
+        onReady();
+        break;
+
+      // Normally you would use `postMessage` control the profiler in
+      // a worker (just like this worker go those events), and the
+      // perf library automatically handles those events. We don't do
+      // that for the special backend worker though because it's
+      // always blocked when it's not processing. Instead we forward
+      // these events by going through the atomics layer to unblock it
+      // to make sure it starts immediately
+      case '__perf-deets:start-profile':
+        writer.string('profile-start');
+        writer.finalize();
+        reader.int32();
+        reader.done();
+        break;
+
+      case '__perf-deets:end-profile':
+        writer.string('profile-end');
+        writer.finalize();
+        reader.int32();
+        reader.done();
+        break;
     }
   });
 
@@ -240,30 +239,33 @@ export default class IndexedDBBackend {
     });
 
     let resultBuffer = new SharedArrayBuffer(4096 * 9);
-    reader = this.reader = new Reader(resultBuffer, {
+    reader = new Reader(resultBuffer, {
       name: 'results',
       debug: false
     });
 
-    await startWorker(argBuffer, resultBuffer);
+    await startWorker(reader, writer);
   }
 
   createFile(filename) {
     return new File(filename, this.defaultBlockSize, new FileOps(filename));
   }
 
+  // Instead of controlling the profiler from the main thread by
+  // posting a message to this worker, you can control it inside the
+  // worker manually with these methods
   startProfile() {
     perf.start();
-    this.writer.string('profile-start');
-    this.writer.finalize();
+    writer.string('profile-start');
+    writer.finalize();
     reader.int32();
     reader.done();
   }
 
   stopProfile() {
-    perf.end();
-    this.writer.string('profile-end');
-    this.writer.finalize();
+    perf.stop();
+    writer.string('profile-stop');
+    writer.finalize();
     reader.int32();
     reader.done();
   }

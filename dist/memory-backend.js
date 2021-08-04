@@ -1,5 +1,4 @@
-// Noops in prod
-async function end() {}
+import * as perf from 'perf-deets';
 
 function range(start, end, step) {
   let r = [];
@@ -182,6 +181,8 @@ class File {
       return length;
     }
 
+    perf.record('read');
+
     position = Math.max(position, 0);
     let dataLength = Math.min(length, this.meta.size - position);
 
@@ -203,6 +204,8 @@ class File {
     for (let i = dataLength; i < length; i++) {
       view[offset + i] = 0;
     }
+
+    perf.endRecording('read');
 
     return length;
   }
@@ -324,15 +327,6 @@ class File {
 
   getattr() {
     return this.meta;
-  }
-
-  startStats() {
-    this.ops.startStats();
-  }
-
-  stats() {
-    end();
-    this.ops.stats();
   }
 }
 

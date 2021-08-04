@@ -1,10 +1,13 @@
 import { initBackend } from '../../indexeddb/main-thread';
+import { listenForPerfData } from 'perf-deets/frontend';
 
 let worker;
 
 function init() {
   worker = new Worker(new URL('./main.worker.js', import.meta.url));
   initBackend(worker);
+
+  listenForPerfData(worker);
 
   worker.postMessage({ type: 'ui-invoke', name: 'init' });
 

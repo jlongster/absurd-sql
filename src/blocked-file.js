@@ -1,4 +1,4 @@
-import * as perf from './perf';
+import * as perf from 'perf-deets';
 
 function range(start, end, step) {
   let r = [];
@@ -330,14 +330,5 @@ export class File {
 
   getattr() {
     return this.meta;
-  }
-
-  startStats() {
-    this.ops.startStats();
-  }
-
-  stats() {
-    perf.end();
-    this.ops.stats();
   }
 }
