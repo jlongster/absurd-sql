@@ -21,7 +21,7 @@ function getConfig(entry, filename, perf) {
       !perf &&
         alias({
           entries: {
-            'perf-deets': path.resolve(__dirname, './src/perf-deets-noop.js')
+            'perf-deets': path.resolve(__dirname, './node_modules/perf-deets/noop.js')
           }
         }),
       webWorkerLoader({
