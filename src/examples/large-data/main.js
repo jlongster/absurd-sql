@@ -6,7 +6,6 @@ let worker;
 function init() {
   worker = new Worker(new URL('./main.worker.js', import.meta.url));
   initBackend(worker);
-
   listenForPerfData(worker);
 
   worker.postMessage({ type: 'ui-invoke', name: 'init' });
@@ -30,6 +29,19 @@ function init() {
       worker.postMessage({ type: 'options', name, value });
     });
   }
+
+  // Make sure all inputs reflect the initial state (browsers try to
+  // be smart and keep the state from before)
+  document.querySelector('input[name="backend"][value="idb"]').checked = true;
+  document.querySelector('input[name="cacheSize"][value="0"]').checked = true;
+  document.querySelector('input[name="pageSize"][value="4096"]').checked = true;
+
+  let profile = document.querySelector('input[name="profile"]');
+  profile.addEventListener('click', e => {
+    worker.postMessage({ type: 'profiling', on: e.target.checked });
+  });
+  console.log(profile.checked)
+  worker.postMessage({ type: 'profiling', on: profile.checked });
 }
 
 let methods = ['init', 'populate', 'countAll', 'randomReads', 'deleteFile'];
@@ -44,3 +56,20 @@ for (let method of methods) {
 }
 
 init();
+
+window.runQuery = sql => {
+  let reqId = Math.random();
+
+  let promise = new Promise(resolve => {
+    let handler = e => {
+      if (e.data.type === 'query-results' && e.data.id === reqId) {
+        worker.removeEventListener('message', handler);
+        resolve(e.data.data);
+      }
+    };
+    worker.addEventListener('message', handler);
+  });
+
+  worker.postMessage({ type: 'run-query', sql, id: reqId });
+  return promise;
+};

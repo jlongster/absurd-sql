@@ -16,6 +16,8 @@ class FileOps {
     return true;
   }
 
+  open() {}
+
   close() {
     return true;
   }
@@ -82,26 +84,21 @@ class FileOps {
 }
 
 export default class MemoryBackend {
-  constructor(defaultBlockSize, fileData) {
+  constructor(fileData) {
     this.fileData = Object.fromEntries(
       Object.entries(fileData).map(([name, data]) => {
         return [name, data];
       })
     );
     this.files = {};
-    this.defaultBlockSize = defaultBlockSize;
   }
 
-  async init() {}
-
   createFile(filename) {
-    console.log('creating', filename);
     if (this.files[filename] == null) {
       let data = this.fileData[filename];
 
       this.files[filename] = new File(
         filename,
-        this.defaultBlockSize,
         new FileOps(
           filename,
           data
@@ -119,4 +116,8 @@ export default class MemoryBackend {
   getFile(filename) {
     return this.files[filename];
   }
+
+  startProfile() {}
+
+  stopProfile() {}
 }

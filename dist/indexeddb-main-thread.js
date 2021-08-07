@@ -43,17 +43,10 @@ function makeStartWorkerFromMain(getModule) {
   };
 }
 
-let hasInitialized = false;
-
 function makeInitBackend(spawnEventName, getModule) {
   const startWorkerFromMain = makeStartWorkerFromMain(getModule);
 
   return worker => {
-    if (hasInitialized) {
-      return;
-    }
-    hasInitialized = true;
-
     worker.addEventListener('message', e => {
       switch (e.data.type) {
         case spawnEventName:
@@ -69,7 +62,7 @@ function makeInitBackend(spawnEventName, getModule) {
 // Use the generic main thread module to create our indexeddb worker
 // proxy
 const initBackend = makeInitBackend('__absurd:spawn-idb-worker', () =>
-  import('./indexeddb-main-thread-worker-662a7d64.js')
+  import('./indexeddb-main-thread-worker-e59518b4.js')
 );
 
 export { initBackend };

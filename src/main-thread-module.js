@@ -43,17 +43,10 @@ function makeStartWorkerFromMain(getModule) {
   };
 }
 
-let hasInitialized = false;
-
 export function makeInitBackend(spawnEventName, getModule) {
   const startWorkerFromMain = makeStartWorkerFromMain(getModule);
 
   return worker => {
-    if (hasInitialized) {
-      return;
-    }
-    hasInitialized = true;
-
     worker.addEventListener('message', e => {
       switch (e.data.type) {
         case spawnEventName:

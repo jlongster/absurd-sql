@@ -5,6 +5,7 @@ let isProbablySafari = /^((?!chrome|android).)*safari/i.test(
   navigator.userAgent
 );
 
+// Don't need a map anymore, we use a worker per file
 let openDbs = new Map();
 let transactions = new Map();
 
@@ -316,11 +317,8 @@ async function loadDb(name) {
       return;
     }
 
-    console.log('opening', name);
-
     let req = globalThis.indexedDB.open(name, 1);
     req.onsuccess = event => {
-      console.log('db is open!', name);
       let db = event.target.result;
 
       db.onversionchange = () => {
@@ -351,7 +349,7 @@ async function loadDb(name) {
 function closeDb(name) {
   let openDb = openDbs.get(name);
   if (openDb) {
-    console.log('closing db');
+    console.log('closing db', name);
     openDb.close();
     openDbs.delete(name);
   }
@@ -489,8 +487,6 @@ async function handleLock(writer, name, lockType) {
 }
 
 async function handleUnlock(writer, name, lockType) {
-  // console.log('unlocking', name, lockType, performance.now());
-
   let trans = getTransaction(name);
 
   if (lockType === LOCK_TYPES.SHARED) {
@@ -541,14 +537,32 @@ async function handleWrites(writer, name, writes) {
 async function handleReadMeta(writer, name) {
   return withTransaction(name, 'readonly', async trans => {
     try {
-      console.log('Reading meta');
       let res = await trans.get(-1);
-      console.log('Reading meta (done)', res);
+      console.log(`Got meta for ${name}:`, res);
 
-      let meta = res;
-      writer.int32(meta ? meta.size : -1);
-      writer.int32(meta ? meta.blockSize : -1);
-      writer.finalize();
+      if (res == null) {
+        // No data yet
+        writer.int32(-1);
+        writer.int32(4096);
+        writer.finalize();
+      } else {
+        // let meta = res;
+
+        // Also read the first block to get the page size
+        let block = await trans.get(0);
+
+        // There should always be a first block if we have meta, but
+        // in case of a corrupted db, default to this size
+        let blockSize = 4096;
+        if (block) {
+          let arr = new Uint16Array(block);
+          blockSize = arr[8] * 256;
+        }
+
+        writer.int32(res.size);
+        writer.int32(blockSize);
+        writer.finalize();
+      }
     } catch (err) {
       console.log(err);
       writer.int32(-1);
@@ -571,31 +585,6 @@ async function handleWriteMeta(writer, name, meta) {
       writer.finalize();
     }
   });
-}
-
-async function handleDeleteFile(writer, name) {
-  try {
-    closeDb(name);
-
-    await new Promise((resolve, reject) => {
-      let req = globalThis.indexedDB.deleteDatabase(name);
-      req.onsuccess = resolve;
-      req.onerror = reject;
-    });
-
-    writer.int32(0);
-    writer.finalize();
-  } catch (err) {
-    writer.int32(-1);
-    writer.finalize();
-  }
-}
-
-async function handleCloseFile(writer, name) {
-  closeDb(name);
-
-  writer.int32(0);
-  writer.finalize();
 }
 
 // `listen` continually listens for requests via the shared buffer.
@@ -674,21 +663,15 @@ async function listen(reader, writer) {
       break;
     }
 
-    case 'deleteFile': {
-      let name = reader.string();
-      reader.done();
-
-      await handleDeleteFile(writer, name);
-      listen(reader, writer);
-      break;
-    }
-
     case 'closeFile': {
       let name = reader.string();
       reader.done();
 
-      await handleCloseFile(writer, name);
-      listen(reader, writer);
+      // This worker is done, shut down
+      writer.int32(0);
+      writer.finalize();
+      closeDb(name);
+      // self.close();
       break;
     }
 
@@ -720,7 +703,7 @@ async function listen(reader, writer) {
 self.onmessage = msg => {
   switch (msg.data.type) {
     case 'init': {
-      postMessage({ type: '__absurd:worker-ready' });
+      // postMessage({ type: '__absurd:worker-ready' });
       let [argBuffer, resultBuffer] = msg.data.buffers;
       let reader = new Reader(argBuffer, { name: 'args', debug: false });
       let writer = new Writer(resultBuffer, { name: 'results', debug: false });

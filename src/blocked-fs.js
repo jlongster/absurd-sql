@@ -38,7 +38,7 @@ export default class BlockedFS {
         return attr;
       },
       setattr: (node, attr) => {
-        if (FS.isFile(node)) {
+        if (this.FS.isFile(node.mode)) {
           node.contents.setattr(attr);
         } else {
           if (attr.mode != null) {

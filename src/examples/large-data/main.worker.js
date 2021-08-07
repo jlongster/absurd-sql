@@ -3,27 +3,18 @@ import { BlockedFS } from '../..';
 import * as uuid from 'uuid';
 import MemoryBackend from '../../memory/backend';
 import IndexedDBBackend from '../../indexeddb/backend';
+import * as queries from './queries';
 
 // Various global state for the demo
 
 let currentBackendType = 'idb';
 let cacheSize = 0;
 let pageSize = 4096;
-let dbName = `db20.sqlite`;
+let dbName = `db21.sqlite`;
+let recordProfile = false;
 
-let memoryBackend = new MemoryBackend(pageSize, {});
-// For now, keep the block size 4096. We were trying to align sqlite's
-// `page_size` with this for optimal perf, but we don't want to
-// actually rely on the db file layout. The web is too different and
-// you'll probably want to share the same file with other systems
-// that can read it natively.
-//
-// We should support arbitrary block sizes here, which is the size of
-// the chunk of data in each IDB entry. However if you make this
-// bigger, sqlite will be requesting smaller pages but we will be
-// re-requesting the same pages many times. In the future that will be
-// cached.
-let idbBackend = new IndexedDBBackend(pageSize);
+let memoryBackend = new MemoryBackend({});
+let idbBackend = new IndexedDBBackend();
 let BFS;
 
 // Helper methods
@@ -35,17 +26,10 @@ async function init() {
     BFS = new BlockedFS(SQL.FS, idbBackend);
     SQL.register_for_idb(BFS);
 
-    await memoryBackend.init();
-
-    try {
-      await idbBackend.init();
-    } catch (e) {
-      if (e.message.includes('SharedArrayBuffer')) {
-        output(
-          '<code>SharedArrayBuffer</code> is not available in your browser. It is required, but in the future we will provide a fallback.'
-        );
-      }
-      throw e;
+    if (typeof SharedArrayBuffer === 'undefined') {
+      output(
+        '<code>SharedArrayBuffer</code> is not available in your browser. It is required, but in the future we will provide a fallback.'
+      );
     }
 
     SQL.FS.mkdir('/blocked');
@@ -53,16 +37,16 @@ async function init() {
   }
 }
 
-function output(msg) {
-  self.postMessage({ type: 'output', msg });
+function getPageSize(db) {
+  let stmt = db.prepare('PRAGMA page_size');
+  stmt.step();
+  let row = stmt.getAsObject();
+  stmt.free();
+  return row.page_size;
 }
 
-function getDBName() {
-  // Changing the page size should change the database since it change
-  // the structural layout of it. We don't actually support changing
-  // the page size yet, which should load everything into memory and
-  // then write it out with the new page (block) size.
-  return dbName.replace('.sqlite', `.${pageSize}.sqlite`);
+function output(msg) {
+  self.postMessage({ type: 'output', msg });
 }
 
 let _db = null;
@@ -77,23 +61,27 @@ function closeDatabase() {
 async function getDatabase() {
   await init();
   if (_db == null) {
-    _db = new SQL.Database(`/blocked/${getDBName()}`, { filename: true });
+    _db = new SQL.Database(`/blocked/${dbName}`, { filename: true });
     // Should ALWAYS use the journal in memory mode. Doesn't make
-    // any sense at all to write the journal
-    //
-    // It's also important to use the same page size that our storage
-    // system uses. This will change in the future so that you don't
-    // have to worry about sqlite's page size (requires some
-    // optimizations)
+    // any sense at all to write the journal. It's way slower
     _db.exec(`
       PRAGMA cache_size=-${cacheSize};
-      PRAGMA page_size=${pageSize};
       PRAGMA journal_mode=MEMORY;
+      PRAGMA page_size=${pageSize};
     `);
-    output(
-      `Opened ${getDBName()} (${currentBackendType}) cache size: ${cacheSize}`
-    );
+    output(`Opened ${dbName} (${currentBackendType}) cache size: ${cacheSize}`);
   }
+
+  let curPageSize = getPageSize(_db);
+
+  if (curPageSize !== pageSize) {
+    output('Page size has changed, running VACUUM to restructure db');
+    _db.exec('VACUUM');
+    // Vacuuming resets the cache size, so set it back
+    _db.exec(`PRAGMA cache_size=-${cacheSize}`);
+    output(`Page size is now ${getPageSize(_db)}`);
+  }
+
   return _db;
 }
 
@@ -102,21 +90,7 @@ function formatNumber(num) {
 }
 
 async function populate() {
-  let db = await getDatabase();
-
-  output('Clearing existing data');
-  db.exec(`
-    BEGIN TRANSACTION;
-    DROP TABLE IF EXISTS kv;
-    CREATE TABLE kv (key TEXT, value TEXT);
-    COMMIT;
-  `);
-
-  let start = Date.now();
-  db.exec('BEGIN TRANSACTION');
-  let stmt = db.prepare('INSERT INTO kv (key, value) VALUES (?, ?)');
-
-  let count = 1000000;
+  let count = undefined;
   if (currentBackendType === 'memory') {
     output(
       'Cannot write 1,000,000 items to memory backend, reducing to 100,000'
@@ -124,15 +98,9 @@ async function populate() {
     count = 100000;
   }
 
-  output(`Inserting ${formatNumber(count)} items`);
+  queries.populate(await getDatabase(), output, uuid, count);
 
-  for (let i = 0; i < count; i++) {
-    stmt.run([uuid.v4(), ((Math.random() * 100000) | 0).toString()]);
-  }
-  db.exec('COMMIT');
-  output('Done! Took: ' + (Date.now() - start));
-
-  let { node } = SQL.FS.lookupPath(`/blocked/${getDBName()}`);
+  let { node } = SQL.FS.lookupPath(`/blocked/${dbName}`);
   let file = node.contents;
 
   output(
@@ -146,86 +114,33 @@ async function populate() {
 
 async function countAll() {
   let db = await getDatabase();
-
-  BFS.backend.startProfile();
-
-  output('Running <code>SELECT COUNT(*) FROM kv</code>');
-  let start = Date.now();
-
-  let stmt;
-  try {
-    stmt = db.prepare(`SELECT COUNT(*) FROM kv`);
-  } catch (err) {
-    output('Error (make sure you write data first): ' + err.message);
-    throw err;
+  if (recordProfile) {
+    BFS.backend.startProfile();
   }
-  while (stmt.step()) {
-    let row = stmt.getAsObject();
-    output('<code>' + JSON.stringify(row) + '</code>');
+
+  queries.countAll(db, output);
+
+  if (recordProfile) {
+    BFS.backend.stopProfile();
   }
-  stmt.free();
-
-  output(
-    'Done reading, took ' +
-      formatNumber(Date.now() - start) +
-      'ms (detailed stats in console)'
-  );
-  output('That just scanned through all 50MB of data!');
-
-  BFS.backend.stopProfile();
 }
 
 async function randomReads() {
   let db = await getDatabase();
-
-  BFS.backend.startProfile();
-
-  output(
-    'Running <code>SELECT key FROM kv LIMIT 1000 OFFSET ?</code> 20 times with increasing offset'
-  );
-  let start = Date.now();
-
-  let stmt;
-  try {
-    stmt = db.prepare(`SELECT key FROM kv LIMIT 1000 OFFSET ?`);
-  } catch (err) {
-    output('Error (make sure you write data first): ' + err.message);
-    throw err;
+  if (recordProfile) {
+    BFS.backend.startProfile();
   }
 
-  for (let i = 0; i < 8; i++) {
-    let off = i * 10000;
-    stmt.bind([off]);
-    output('Using offset: ' + formatNumber(off));
+  queries.randomReads(db, output);
 
-    let num = 0;
-    while (stmt.step()) {
-      num++;
-      let row = stmt.getAsObject();
-      if (num === 999) {
-        output('(999 items hidden)');
-      } else if (num > 998) {
-        output('<code>' + JSON.stringify(row) + '</code>');
-      }
-    }
-
-    stmt.reset();
+  if (recordProfile) {
+    BFS.backend.stopProfile();
   }
-
-  stmt.free();
-
-  output(
-    'Done reading, took ' +
-      formatNumber(Date.now() - start) +
-      'ms (detailed stats in console)'
-  );
-
-  BFS.backend.stopProfile();
 }
 
 async function deleteFile() {
   await init();
-  let filepath = `/blocked/${getDBName()}`;
+  let filepath = `/blocked/${dbName}`;
 
   let exists = true;
   try {
@@ -258,6 +173,28 @@ if (typeof self !== 'undefined') {
         methods[msg.data.name]();
         break;
 
+      case 'run-query': {
+        getDatabase().then(db => {
+          let stmt = db.prepare(msg.data.sql);
+          let rows = [];
+          while (stmt.step()) {
+            rows.push(stmt.getAsObject());
+          }
+          stmt.free();
+          self.postMessage({
+            type: 'query-results',
+            data: rows,
+            id: msg.data.id
+          });
+        });
+        break;
+      }
+
+      case 'profiling': {
+        recordProfile = msg.data.on;
+        break;
+      }
+
       case 'options':
         switch (msg.data.name) {
           case 'backend':
@@ -287,10 +224,10 @@ if (typeof self !== 'undefined') {
 
           case 'pageSize': {
             closeDatabase();
-            console.log(msg.data.value);
             pageSize = parseInt(msg.data.value);
-            memoryBackend.defaultBlockSize = pageSize;
-            idbBackend.defaultBlockSize = pageSize;
+            // This will force the db to load which checks the
+            // requested page size and vacuums if necessary
+            getDatabase();
           }
         }
         break;

@@ -1,3 +1,4 @@
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 function getConfig(name, entry, html) {
@@ -21,7 +22,10 @@ function getConfig(name, entry, html) {
         fs: false
       }
     },
-    plugins: [new HtmlWebpackPlugin({ template: html })],
+    plugins: [
+      new HtmlWebpackPlugin({ template: html }),
+      new webpack.IgnorePlugin({ resourceRegExp: /perf_hooks/ })
+    ],
     module: {
       rules: [
         {

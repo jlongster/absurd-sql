@@ -803,8 +803,8 @@ function startWorker(reader, writer) {
         reader.done();
         break;
 
-      case '__perf-deets:end-profile':
-        writer.string('profile-end');
+      case '__perf-deets:stop-profile':
+        writer.string('profile-stop');
         writer.finalize();
         reader.int32();
         reader.done();
@@ -838,6 +838,11 @@ class IndexedDBBackend {
 
   createFile(filename) {
     return new File(filename, this.defaultBlockSize, new FileOps(filename));
+  }
+
+  shutdown() {
+    writer.string('shutdown');
+    writer.finalize();
   }
 
   // Instead of controlling the profiler from the main thread by
