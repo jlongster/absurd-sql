@@ -42,8 +42,6 @@ function init() {
   });
 
   worker.postMessage({ type: 'ui-invoke', name: 'count' });
-
-  supportNestedWorkers(worker);
 }
 
 let methods = ['load'];

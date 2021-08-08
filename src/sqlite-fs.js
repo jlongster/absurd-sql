@@ -6,13 +6,13 @@ const ERRNO_CODES = {
 // This implements an emscripten-compatible filesystem that is means
 // to be mounted to the one from `sql.js`. Example:
 //
-// let BFS = new BlockedFS(SQL.FS, idbBackend);
+// let BFS = new SQLiteFS(SQL.FS, idbBackend);
 // SQL.FS.mount(BFS, {}, '/blocked');
 //
 // Now any files created under '/blocked' will be handled by this
 // filesystem, which creates a special file that handles read/writes
 // in the way that we want.
-export default class BlockedFS {
+export default class SQLiteFS {
   constructor(FS, backend) {
     this.FS = FS;
     this.backend = backend;

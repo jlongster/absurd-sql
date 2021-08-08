@@ -37,7 +37,7 @@ The following code will get you up and running:
 
 ```js
 import initSqlJS from '@jlongster/sql.js';
-import { BlockedFS } from 'absurd-sql.js-backend';
+import { SqliteFS } from 'absurd-sql.js-backend';
 import IndexedDBBackend from 'absurd-sql.js-backend/dist/indexeddb-backend');
 
 async function run() {
@@ -46,7 +46,7 @@ async function run() {
 
   // Create the backend and filesystem
   let backend = new IndexedDBBackend(4096);
-  let BFS = new BlockedFS(SQL.FS, backend);
+  let BFS = new SqliteFS(SQL.FS, backend);
 
   // For now, we need to initialize some internal state. This
   // API will be improved

@@ -1,4 +1,4 @@
-import { File } from '../blocked-file';
+import { File } from '../sqlite-file';
 
 class FileOps {
   constructor(filename, meta = null, data) {

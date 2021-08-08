@@ -1,5 +1,5 @@
 import initSqlJs from '@jlongster/sql.js/dist/sql-wasm-debug.js';
-import { BlockedFS } from '../..';
+import { SQLiteFS } from '../..';
 import * as uuid from 'uuid';
 import MemoryBackend from '../../memory/backend';
 import IndexedDBBackend from '../../indexeddb/backend';
@@ -15,7 +15,7 @@ let recordProfile = false;
 
 let memoryBackend = new MemoryBackend({});
 let idbBackend = new IndexedDBBackend();
-let BFS;
+let sqlFS;
 
 // Helper methods
 
@@ -23,8 +23,8 @@ let SQL = null;
 async function init() {
   if (SQL == null) {
     SQL = await initSqlJs({ locateFile: file => file });
-    BFS = new BlockedFS(SQL.FS, idbBackend);
-    SQL.register_for_idb(BFS);
+    sqlFS = new SQLiteFS(SQL.FS, idbBackend);
+    SQL.register_for_idb(sqlFS);
 
     if (typeof SharedArrayBuffer === 'undefined') {
       output(
@@ -33,7 +33,7 @@ async function init() {
     }
 
     SQL.FS.mkdir('/blocked');
-    SQL.FS.mount(BFS, {}, '/blocked');
+    SQL.FS.mount(sqlFS, {}, '/blocked');
   }
 }
 
@@ -108,13 +108,13 @@ async function populate() {
   let db = await getDatabase();
 
   if (recordProfile) {
-    BFS.backend.startProfile();
+    sqlFS.backend.startProfile();
   }
 
   queries.populate(db, output, uuid, count);
 
   if (recordProfile) {
-    BFS.backend.stopProfile();
+    sqlFS.backend.stopProfile();
   }
 
   let { node } = SQL.FS.lookupPath(`/blocked/${dbName}`);
@@ -132,26 +132,26 @@ async function populate() {
 async function countAll() {
   let db = await getDatabase();
   if (recordProfile) {
-    BFS.backend.startProfile();
+    sqlFS.backend.startProfile();
   }
 
   queries.countAll(db, output);
 
   if (recordProfile) {
-    BFS.backend.stopProfile();
+    sqlFS.backend.stopProfile();
   }
 }
 
 async function randomReads() {
   let db = await getDatabase();
   if (recordProfile) {
-    BFS.backend.startProfile();
+    sqlFS.backend.startProfile();
   }
 
   queries.randomReads(db, output);
 
   if (recordProfile) {
-    BFS.backend.stopProfile();
+    sqlFS.backend.stopProfile();
   }
 }
 
@@ -220,9 +220,9 @@ if (typeof self !== 'undefined') {
             // We dont really support swapping the backend like this,
             // but it works for the demo
             if (currentBackendType === 'memory') {
-              BFS.backend = memoryBackend;
+              sqlFS.backend = memoryBackend;
             } else {
-              BFS.backend = idbBackend;
+              sqlFS.backend = idbBackend;
             }
             break;
 

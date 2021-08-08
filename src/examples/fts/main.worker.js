@@ -1,5 +1,5 @@
 import initSqlJs from '@jlongster/sql.js';
-import { BlockedFS } from '../..';
+import { SQLiteFS } from '../..';
 import * as uuid from 'uuid';
 import MemoryBackend from '../../memory/backend';
 import IndexedDBBackend from '../../indexeddb/backend';
@@ -12,7 +12,7 @@ let pageSize = 4096;
 let dbName = `fts.sqlite`;
 
 let idbBackend = new IndexedDBBackend(4096 * 2);
-let BFS;
+let sqlFS;
 
 // Helper methods
 
@@ -20,22 +20,11 @@ let SQL = null;
 let ready = null;
 async function _init() {
   SQL = await initSqlJs({ locateFile: file => file });
-  BFS = new BlockedFS(SQL.FS, idbBackend);
-  SQL.register_for_idb(BFS);
-
-  try {
-    await BFS.init();
-  } catch (e) {
-    if (e.message.includes('SharedArrayBuffer')) {
-      output(
-        '<code>SharedArrayBuffer</code> is not available in your browser. It is required, but in the future we will provide a fallback.'
-      );
-    }
-    throw e;
-  }
+  sqlFS = new SQLiteFS(SQL.FS, idbBackend);
+  SQL.register_for_idb(sqlFS);
 
   SQL.FS.mkdir('/blocked');
-  SQL.FS.mount(BFS, {}, '/blocked');
+  SQL.FS.mount(sqlFS, {}, '/blocked');
 }
 
 function init() {

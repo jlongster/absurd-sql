@@ -1,4 +1,4 @@
-import { File } from '../blocked-file';
+import { File } from '../sqlite-file';
 import * as perf from 'perf-deets';
 import { LOCK_TYPES, getPageSize, isSafeToWrite } from '../sqlite-util';
 import { FileOps } from './file-ops';

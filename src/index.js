@@ -1,4 +1,4 @@
-import _BlockedFS from './blocked-fs';
+import _SQLiteFS from './sqlite-fs';
 
 // Right now we don't support `export from` so we do this manually
-export const BlockedFS = _BlockedFS;
+export const SQLiteFS = _SQLiteFS;
