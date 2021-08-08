@@ -28,7 +28,7 @@ async function init() {
 
     if (typeof SharedArrayBuffer === 'undefined') {
       output(
-        '<code>SharedArrayBuffer</code> is not available in your browser. It is required, but in the future we will provide a fallback.'
+        '<code>SharedArrayBuffer</code> is not available in your browser. Falling back.'
       );
     }
 
@@ -61,7 +61,13 @@ function closeDatabase() {
 async function getDatabase() {
   await init();
   if (_db == null) {
-    _db = new SQL.Database(`/blocked/${dbName}`, { filename: true });
+    let path = `/blocked/${dbName}`;
+
+    let { node } = SQL.FS.open(path, 'a+');
+    await node.contents.readIfFallback();
+
+    _db = new SQL.Database(path, { filename: true });
+
     // Should ALWAYS use the journal in memory mode. Doesn't make
     // any sense at all to write the journal. It's way slower
     _db.exec(`
@@ -97,8 +103,19 @@ async function populate() {
     );
     count = 100000;
   }
+  // count = Math.random() * 100 + 1000;
 
-  queries.populate(await getDatabase(), output, uuid, count);
+  let db = await getDatabase();
+
+  if (recordProfile) {
+    BFS.backend.startProfile();
+  }
+
+  queries.populate(db, output, uuid, count);
+
+  if (recordProfile) {
+    BFS.backend.stopProfile();
+  }
 
   let { node } = SQL.FS.lookupPath(`/blocked/${dbName}`);
   let file = node.contents;

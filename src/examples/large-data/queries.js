@@ -6,7 +6,7 @@ function formatNumber(num) {
   return new Intl.NumberFormat('en-US').format(num);
 }
 
-function populate(db, output, uuid, count = 10) {
+function populate(db, output, uuid, count = 1000000) {
   output('Clearing existing data');
   db.exec(`
     BEGIN TRANSACTION;
@@ -74,8 +74,8 @@ async function randomReads(db, output) {
 
   let canRebind = !!stmt.reset;
 
-  for (let i = 0; i < 8; i++) {
-    let off = i * 10000;
+  for (let i = 0; i < 100; i++) {
+    let off = i * 300;
     if (canRebind) {
       stmt.bind([off]);
     }
@@ -85,7 +85,7 @@ async function randomReads(db, output) {
       // better-sqlite3 doesn't allow you to rebind the same
       // statement. This is probably a tiny perf hit, but negligable
       // for what we're measuring (it's already so much faster anyway)
-      stmt = db.prepare(`SELECT key FROM kv LIMIT 1000 OFFSET ${off}`);
+      stmt = db.prepare(`SELECT key FROM kv LIMIT 2000 OFFSET ${off}`);
       let rows = stmt.all();
       console.log(rows[rows.length - 1]);
     } else {

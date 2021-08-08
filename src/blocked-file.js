@@ -1,22 +1,5 @@
 import * as perf from 'perf-deets';
-
-let LOCK_TYPES = {
-  NONE: 0,
-  SHARED: 1,
-  RESERVED: 2,
-  PENDING: 3,
-  EXCLUSIVE: 4
-};
-
-function getPageSize(bufferView) {
-  // See 1.3.2 on https://www.sqlite.org/fileformat.html The page size
-  // is stored as a 2 byte integer at the 16th byte. It's stored as
-  // big-endian so the first byte is the larger one. Combine it into a
-  // single integer.
-  let int1 = bufferView[16];
-  let int2 = bufferView[17];
-  return (int1 << 8) + int2;
-}
+import { getPageSize, LOCK_TYPES } from './sqlite-util';
 
 function range(start, end, step) {
   let r = [];
@@ -229,7 +212,9 @@ export class File {
   }
 
   write(bufferView, offset, length, position) {
-    // console.log('writing', this.filename, offset, length, position);
+    // console.log('writing', this.filename, offset, length,
+    // position);
+    perf.record('write');
 
     if (this.meta.blockSize == null) {
       // We don't have a block size yet. The first write MUST be the
@@ -317,11 +302,19 @@ export class File {
 
     this.bufferChunks(allWrites);
 
+    perf.endRecording('write');
+
     if (position + length > this.meta.size) {
       this.setattr({ size: position + length });
     }
 
     return length;
+  }
+
+  readIfFallback() {
+    if (this.ops.readIfFallback) {
+      return this.ops.readIfFallback();
+    }
   }
 
   lock(lockType) {
@@ -397,7 +390,9 @@ export class File {
         }
       }
 
+      perf.record('writeBlocks');
       this.ops.writeBlocks([...this.buffer.values()], this.meta.blockSize);
+      perf.endRecording('writeBlocks');
     }
 
     if (this._metaDirty) {

@@ -23,12 +23,19 @@ export class Reader {
     }
   }
 
-  waitWrite(name) {
+  waitWrite(name, timeout = null) {
     if (this.useAtomics) {
       this.log(`waiting for ${name}`);
 
       while (Atomics.load(this.atomicView, 0) === WRITEABLE) {
-        // console.log('waiting for write...');
+        if (timeout != null) {
+          if (
+            Atomics.wait(this.atomicView, 0, WRITEABLE, timeout) === 'timed-out'
+          ) {
+            throw new Error('timeout');
+          }
+        }
+
         Atomics.wait(this.atomicView, 0, WRITEABLE, 500);
       }
 
@@ -84,8 +91,8 @@ export class Reader {
     return res;
   }
 
-  string() {
-    this.waitWrite('string');
+  string(timeout) {
+    this.waitWrite('string', timeout);
 
     let byteLength = this._int32();
     let length = byteLength / 2;

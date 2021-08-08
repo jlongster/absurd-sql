@@ -1,5 +1,6 @@
 import { Reader, Writer } from './shared-channel';
 import * as perf from 'perf-deets';
+import { LOCK_TYPES, isSafeToWrite } from '../sqlite-util';
 
 let isProbablySafari = /^((?!chrome|android).)*safari/i.test(
   navigator.userAgent
@@ -14,14 +15,6 @@ function assert(cond, msg) {
     throw new Error(msg);
   }
 }
-
-let LOCK_TYPES = {
-  NONE: 0,
-  SHARED: 1,
-  RESERVED: 2,
-  PENDING: 3,
-  EXCLUSIVE: 4
-};
 
 // We use long-lived transactions, and `Transaction` keeps the
 // transaction state. It implements an optimal way to perform
@@ -116,15 +109,9 @@ class Transaction {
 
     if (cached0 == null && block == null) {
       return true;
-    } else {
-      for (let i = 24; i < 40; i++) {
-        if (block[i] !== cached0[i]) {
-          return false;
-        }
-      }
     }
 
-    return true;
+    return isSafeToWrite(new Uint8Array(block), new Uint8Array(cached0));
   }
 
   downgradeShared() {
@@ -656,9 +643,9 @@ async function listen(reader, writer) {
     case 'writeMeta': {
       let name = reader.string();
       let size = reader.int32();
-      let blockSize = reader.int32();
+      // let blockSize = reader.int32();
       reader.done();
-      await handleWriteMeta(writer, name, { size, blockSize });
+      await handleWriteMeta(writer, name, { size });
       listen(reader, writer);
       break;
     }

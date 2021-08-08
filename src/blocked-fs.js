@@ -136,10 +136,6 @@ export default class BlockedFS {
     };
   }
 
-  async init() {
-    await this.backend.init();
-  }
-
   mount() {
     return this.createNode(null, '/', 16384 /* dir */ | 511 /* 0777 */, 0);
   }
