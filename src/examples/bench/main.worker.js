@@ -94,9 +94,11 @@ async function getDatabase() {
 
     let path = `/blocked/${dbName}`;
 
-    // let stream = SQL.FS.open(path, 'a+');
-    // await stream.node.contents.readIfFallback();
-    // SQL.FS.close(stream);
+    if (typeof SharedArrayBuffer === 'undefined') {
+      let stream = SQL.FS.open(path, 'a+');
+      await stream.node.contents.readIfFallback();
+      SQL.FS.close(stream);
+    }
 
     _db = new SQL.Database(path, { filename: true });
 

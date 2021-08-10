@@ -17,16 +17,25 @@ export function getPageSize(bufferView) {
 }
 
 export function isSafeToWrite(localData, diskData) {
-  // See
-  // https://github.com/sqlite/sqlite/blob/master/src/pager.c#L93-L96
-  // (might be documented somewhere? I didn't see it this clearly in
-  // the docs). At least one of these bytes change when sqlite3 writes
-  // data. We can check this against our in-memory data to see if it's
-  // safe to write (if something changes underneath us, it's not)
-  for (let i = 24; i < 40; i++) {
-    if (localData[i] !== diskData[i]) {
-      return false;
+  if (localData != null && diskData != null) {
+    let localView = new Uint8Array(localData);
+    let diskView = new Uint8Array(diskData);
+
+    // See
+    // https://github.com/sqlite/sqlite/blob/master/src/pager.c#L93-L96
+    // (might be documented somewhere? I didn't see it this clearly in
+    // the docs). At least one of these bytes change when sqlite3 writes
+    // data. We can check this against our in-memory data to see if it's
+    // safe to write (if something changes underneath us, it's not)
+    for (let i = 24; i < 40; i++) {
+      if (localView[i] !== diskView[i]) {
+        return false;
+      }
     }
+    return true;
   }
-  return true;
+
+  // One of them is null, so it's only safe if to write if both are
+  // null, otherwise they are different
+  return localData == null && diskData == null;
 }

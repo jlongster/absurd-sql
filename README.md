@@ -13,7 +13,15 @@ IndexedDB is not a great database. It's slow, hard to work with, and has very fe
 
 ## ... How well does it work?
 
-It works absurdly well. It consistently beats IndexedDB performance 10 fold or even more.
+It works absurdly well. It consistently beats IndexedDB performance up to 10x:
+
+Read performance: doing something like `SELECT SUM(value) FROM kv`:
+
+<img width="610" alt="perf-sum-chrome" src="https://user-images.githubusercontent.com/17031/129102253-8adf163a-76b6-4af8-a1cf-8e2e39012ab0.png">
+
+Write performance: doing a bulk insert:
+
+<img width="609" alt="perf-writes-chrome" src="https://user-images.githubusercontent.com/17031/129102454-b4c362b3-1b0a-4625-ac96-72fc276497f3.png">
 
 Why? It's simple once you think about it: since we are reading/writing data in 4K chunks (size is configurable), we automatically batch reads and writes. If you want to store 1 million objects into IDB, you need to do 1 million writes. With this absurd backend, it only needs to do ~12500 writes.
 

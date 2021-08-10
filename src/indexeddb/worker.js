@@ -107,11 +107,7 @@ class Transaction {
     let block = await this.prefetchFirstBlock(500);
     // TODO: when timeouts are implemented, detect timeout and return BUSY
 
-    if (cached0 == null && block == null) {
-      return true;
-    }
-
-    return isSafeToWrite(new Uint8Array(block), new Uint8Array(cached0));
+    return isSafeToWrite(block, cached0);
   }
 
   downgradeShared() {

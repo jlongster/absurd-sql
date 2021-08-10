@@ -1,3 +1,5 @@
+import { LOCK_TYPES, isSafeToWrite, getPageSize } from '../sqlite-util';
+
 function positionToKey(pos, blockSize) {
   // We are forced to round because of floating point error. `pos`
   // should always be divisible by `blockSize`
@@ -36,13 +38,37 @@ export class FileOpsFallback {
     this.cachedFirstBlock = null;
     this.blocks = new Map();
     this.writeQueue = [];
-    this.lockType = null;
+    this.lockType = 0;
+  }
+
+  async getDb() {
+    if (this._openDb) {
+      return this._openDb;
+    }
+
+    this._openDb = await openDb(this.dbName);
+    return this._openDb;
+  }
+
+  closeDb() {
+    if (this._openDb) {
+      this._openDb.close();
+      this._openDb = null;
+    }
   }
 
   async readIfFallback() {
-    this.db = await openDb(this.dbName);
+    // OK We need to fix this better - we don't block on the writes
+    // being flushed from closing the file, and we can't read in
+    // everything here because we might get old data. Need to track
+    // the last write and force it to be sequential
+    if (this.blocks.size > 0) {
+      return;
+    }
 
-    let trans = this.db.transaction(['data'], 'readonly');
+    let db = await this.getDb(this.dbName);
+
+    let trans = db.transaction(['data'], 'readonly');
     let store = trans.objectStore('data');
 
     return new Promise((resolve, reject) => {
@@ -55,8 +81,7 @@ export class FileOpsFallback {
           this.blocks.set(cursor.key, cursor.value);
           cursor.continue();
         } else {
-          this.cachedFirstBlock = this.blocks.get(0);
-          resolve();
+          resolve(this.readMeta());
         }
       };
     });
@@ -66,37 +91,48 @@ export class FileOpsFallback {
     this.writeQueue.push({ key, value });
   }
 
-  async flushWrites() {
+  // We need a snapshot of the current write + state in which it was
+  // written. We do writes async, so we can't check this state over
+  // time because it may change from underneath us
+  prepareFlush() {
+    let writeState = {
+      cachedFirstBlock: this.cachedFirstBlock,
+      writes: this.writeQueue,
+      lockType: this.lockType
+    };
+    this.writeQueue = [];
+    return writeState;
+  }
+
+  async flushWriteState(db, writeState) {
     // We need grab a readwrite lock on the db, and then read to check
     // to make sure we can write to it
-    let trans = this.db.transaction(['data'], 'readwrite');
+    let trans = db.transaction(['data'], 'readwrite');
     let store = trans.objectStore('data');
 
     await new Promise((resolve, reject) => {
       let req = store.get(0);
       req.onsuccess = e => {
-        if (
-          !isSafeToWrite(
-            new Uint8Array(req.result),
-            new Uint8Array(this.cachedFirstBlock)
-          )
-        ) {
-          console.log('SCREWED');
-          reject('screwed');
-          return;
+        if (writeState.lockType > LOCK_TYPES.NONE) {
+          if (!isSafeToWrite(req.result, writeState.cachedFirstBlock)) {
+            // TODO: We need to send a message to users somehow
+            console.log("OH NO WE CAN'T WRITE");
+            reject('screwed');
+            return;
+          }
         }
 
         // Flush all the writes
-        for (let write of this.writeQueue) {
+        for (let write of writeState.writes) {
           store.put(write.value, write.key);
-
-          if (write.key === 0) {
-            this.cachedFirstBlock = write.value;
-          }
         }
 
         trans.onsuccess = () => {
           resolve();
+        };
+        trans.onerror = () => {
+          console.log('Flushing writes failed');
+          reject();
         };
       };
       req.onerror = reject;
@@ -108,6 +144,7 @@ export class FileOpsFallback {
     // locally (we can't see any writes from anybody else) and we just
     // want to track the lock so we know when it downgrades from write
     // to read
+    this.cachedFirstBlock = this.blocks.get(0);
     this.lockType = lockType;
     return true;
   }
@@ -117,19 +154,42 @@ export class FileOpsFallback {
       // Downgrading the lock from a write lock to a read lock. This
       // is where we actually flush out all the writes async if
       // possible
-      this.flushWrites();
+      let writeState = this.prepareFlush();
+      this.getDb(this.dbName).then(db => this.flushWriteState(db, writeState));
     }
+    this.lockType = lockType;
     return true;
   }
 
-  delete() {}
+  delete() {
+    let req = globalThis.indexedDB.deleteDatabase(this.dbName);
+    req.onerror = () => {
+      console.warn(`Deleting ${this.filename} database failed`);
+    };
+    req.onsuccess = () => {};
+  }
 
   open() {}
 
   close() {
     // Clear out the in-memory data in close (it will have to be fully
     // read in before opening again)
-    this.buffer = null;
+    // this.buffer = null;
+
+    if (this._openDb) {
+      // The order is important here: we want to flush out any pending
+      // writes, and we expect the db to open. We use that and then
+      // immediately close it, but since we are going to close it we
+      // don't want anything else to use that db connection. So we
+      // clear it out and then close it later
+      let db = this._openDb;
+      this._openDb = null;
+
+      let writeState = this.prepareFlush();
+      this.flushWriteState(db, writeState).then(() => {
+        db.close();
+      });
+    }
   }
 
   readMeta() {

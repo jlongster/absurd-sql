@@ -123,12 +123,18 @@ export class File {
     this.ops.open();
     let meta = this.ops.readMeta();
 
-    if (meta == null) {
-      // New file
-      meta = { size: 0 };
+    // It's possible that `setattr` has already been called if opening
+    // the file in a mode that truncates it to 0
+    if (this.meta == null) {
+      if (meta == null) {
+        // New file
+
+        meta = { size: 0 };
+      }
+
+      this.meta = meta;
     }
 
-    this.meta = meta;
     return meta;
   }
 
@@ -308,9 +314,11 @@ export class File {
     return length;
   }
 
-  readIfFallback() {
+  async readIfFallback() {
     if (this.ops.readIfFallback) {
-      return this.ops.readIfFallback();
+      // Reset the meta
+      let meta = await this.ops.readIfFallback();
+      this.meta = meta || { size: 0 };
     }
   }
 
@@ -420,6 +428,10 @@ export class File {
   }
 
   setattr(attr) {
+    if (this.meta == null) {
+      this.meta = {};
+    }
+
     // Size is the only attribute we actually persist. The rest are
     // stored in memory
 

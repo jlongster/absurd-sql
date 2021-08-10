@@ -8,10 +8,10 @@ import IndexedDBBackend from '../../indexeddb/backend';
 
 let currentBackendType = 'idb';
 let cacheSize = 5000;
-let pageSize = 4096;
+let pageSize = 8192;
 let dbName = `fts.sqlite`;
 
-let idbBackend = new IndexedDBBackend(4096 * 2);
+let idbBackend = new IndexedDBBackend();
 let sqlFS;
 
 // Helper methods
@@ -68,6 +68,7 @@ async function getDatabase() {
       PRAGMA page_size=${pageSize};
       PRAGMA journal_mode=MEMORY;
     `);
+    _db.exec('VACUUM');
     output(
       `Opened ${getDBName()} (${currentBackendType}) cache size: ${cacheSize}`
     );

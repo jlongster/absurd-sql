@@ -1,6 +1,6 @@
 import { File } from '../sqlite-file';
 import * as perf from 'perf-deets';
-import { LOCK_TYPES, getPageSize, isSafeToWrite } from '../sqlite-util';
+import { LOCK_TYPES, getPageSize } from '../sqlite-util';
 import { FileOps } from './file-ops';
 import { FileOpsFallback } from './file-ops-fallback';
 
