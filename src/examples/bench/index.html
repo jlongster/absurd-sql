@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<body>
+  <style type="text/css">
+    html, body, .container {
+      height: 100%;
+    }
+
+    body {
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .flex {
+      display: flex;
+    }
+
+    .flex-fill {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .output {
+      padding: 15px 10px;
+      font-size: 14px;
+      overflow: auto;
+      border: 1px solid #d0d0fa;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+
+    .timings {
+      margin-left: 10px;
+      width: 100px;
+      text-align: center;
+    }
+
+    .timings strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    .output > div {
+      margin-bottom: 10px;
+    }
+
+    .options {
+      margin-top: 10px;
+    }
+
+    .options label {
+      margin-right: 15px;
+    }
+
+    .text {
+      max-width: 800px;
+      line-height: 1.4em;
+      margin-bottom: 10px;
+    }
+
+    .text.last {
+      margin-bottom: 15px;
+    }
+
+    .more {
+      display: none;
+    }
+
+    .more-text {
+      display: inline;
+      font-size: 13px;
+      color: #8080a0;
+      margin-left: 5px;
+      text-decoration: none;
+    }
+  </style>
+
+  <div class="container">
+    <div class="text">
+      This is sqlite3 running in your browser with a backend that
+      properly persists the database in IndexedDB
+      (<a href="https://github.com/jlongster/absurd-sql.js-backend">absurd-sql.js-backend</a>).
+      It stores each page from the db as a separate item, treating IDB
+      like a hard disk. It never has to load the full DB into memory
+      and can update it with small individual writes.
+    </div>
+
+    <div class="text last">
+      The below examples are meant to be stress tests, showing that it
+      can handle large amounts of data and queries that need to scan
+      all of it. With more normal cases and a small cache, it works
+      really well. It easily beats IndexedDB by a factor of 10 or
+      more.
+    </div>
+
+    <div>
+      <button id="populateSmall">Write a little data</button>
+      <button id="populateLarge">Write lots of data</button>
+      <button id="sumAll">Sum all values</button>
+      <button id="randomReads">Read chunks of 1000 items</button>
+      <button id="deleteFile">Delete file</button>
+      <a href="#" class="more-text">More</a>
+      <div class="more">
+        <button id="readBench">Run read benchmarks</button>
+        <button id="writeBench">Run write benchmarks</button>
+      </div>
+    </div>
+
+    <div class="options">
+      <label><input type="checkbox" name="profile"> Record performance profile</label>
+      <label><input type="checkbox" name="raw-indexeddb"> Use raw IndexedDB</label>
+    </div>
+
+    <div class="disable-if-raw-idb">
+      <div class="options">
+        Backend:
+        <label><input type="radio" name="backend" value="idb" checked> IndexedDB</label>
+        <label><input type="radio" name="backend" value="memory"> Memory</label>
+      </div>
+
+      <div class="options">
+        Cache size:
+        <label><input type="radio" name="cacheSize" value="0" checked> 0MB</label>
+        <label><input type="radio" name="cacheSize" value="2000"> 2MB</label>
+        <label><input type="radio" name="cacheSize" value="10000"> 10MB</label>
+        <label><input type="radio" name="cacheSize" value="60000"> 60MB</label>
+        <span class="warning" style="font-size: 13px; color: #8080a0">Using a cache will greatly improve perf, but no cache shows the full number of read/writes</span>
+      </div>
+
+      <div class="options pageSize">
+        Page size:
+        <label><input type="radio" name="pageSize" value="4096" checked> 4096</label>
+        <label><input type="radio" name="pageSize" value="8192"> 8192</label>
+        <label><input type="radio" name="pageSize" value="16384"> 16384</label>
+      </div>
+    </div>
+
+    <div class="flex flex-fill">
+      <div class="output flex-fill"></div>
+      <div class="output timings">
+        <strong>timings</strong>
+        <div class="timings-data"></div>
+      </div>
+    </div>
+  </div>
+</body>

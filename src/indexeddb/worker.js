@@ -304,7 +304,7 @@ async function loadDb(name) {
       return;
     }
 
-    let req = globalThis.indexedDB.open(name, 1);
+    let req = globalThis.indexedDB.open(name, 2);
     req.onsuccess = event => {
       let db = event.target.result;
 
@@ -336,7 +336,6 @@ async function loadDb(name) {
 function closeDb(name) {
   let openDb = openDbs.get(name);
   if (openDb) {
-    console.log('closing db', name);
     openDb.close();
     openDbs.delete(name);
   }
@@ -524,6 +523,7 @@ async function handleWrites(writer, name, writes) {
 async function handleReadMeta(writer, name) {
   return withTransaction(name, 'readonly', async trans => {
     try {
+      console.log('Reading meta...');
       let res = await trans.get(-1);
       console.log(`Got meta for ${name}:`, res);
 
@@ -658,7 +658,7 @@ async function listen(reader, writer) {
       writer.int32(0);
       writer.finalize();
       closeDb(name);
-      // self.close();
+      self.close();
       break;
     }
 

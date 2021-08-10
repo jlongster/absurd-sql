@@ -38,6 +38,6 @@ function getConfig(name, entry, html) {
 }
 
 module.exports = [
-  getConfig('large-data', './large-data/main.js', './large-data/index.html'),
+  getConfig('bench', './bench/main.js', './bench/index.html'),
   getConfig('fts', './fts/main.js', './fts/index.html')
 ];

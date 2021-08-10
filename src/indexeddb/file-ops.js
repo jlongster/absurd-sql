@@ -179,10 +179,16 @@ export class FileOps {
       this.close();
     }
 
+    // We delete it here because we can't do it in the worker; the
+    // worker is stopped when the file closes. If we didn't do that,
+    // workers would leak in the case of closing a file but not
+    // deleting it. We could potentially restart the worker here if
+    // needed, but for now just assume that the deletion is a success
     let req = globalThis.indexedDB.deleteDatabase(this.getStoreName());
     req.onerror = () => {
       console.warn(`Deleting ${this.filename} database failed`);
     };
+    req.onsuccess = () => {};
   }
 
   open() {

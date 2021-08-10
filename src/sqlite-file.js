@@ -157,7 +157,9 @@ export class File {
 
     let missingChunks = [];
     if (status.missing.length > 0) {
+      perf.record('read-blocks');
       missingChunks = this.ops.readBlocks(status.missing, this.meta.blockSize);
+      perf.endRecording('read-blocks');
     }
     return status.chunks.concat(missingChunks);
   }
@@ -182,8 +184,6 @@ export class File {
       return length;
     }
 
-    perf.record('read');
-
     position = Math.max(position, 0);
     let dataLength = Math.min(length, this.meta.size - position);
 
@@ -206,23 +206,20 @@ export class File {
       view[offset + i] = 0;
     }
 
-    perf.endRecording('read');
-
     return length;
   }
 
   write(bufferView, offset, length, position) {
-    // console.log('writing', this.filename, offset, length,
-    // position);
-    perf.record('write');
+    // console.log('writing', this.filename, offset, length, position);
 
     if (this.meta.blockSize == null) {
-      // We don't have a block size yet. The first write MUST be the
-      // beginning of the file. This is a new file and the first block
-      // contains the page size which we need. sqlite will write this
-      // block first, and if you are directly writing a db file to
-      // disk you can't write random parts of it. Just write the whole
-      // thing and we'll get the first block first.
+      // We don't have a block size yet (an empty file). The first
+      // write MUST be the beginning of the file. This is a new file
+      // and the first block contains the page size which we need.
+      // sqlite will write this block first, and if you are directly
+      // writing a db file to disk you can't write random parts of it.
+      // Just write the whole thing and we'll get the first block
+      // first.
 
       let pageSize = getPageSize(
         new Uint8Array(bufferView.buffer, bufferView.byteOffset + offset)
@@ -253,6 +250,8 @@ export class File {
     if (buffer.byteLength === 0) {
       return 0;
     }
+
+    perf.count('writes');
 
     length = Math.min(length, buffer.byteLength - offset);
 
@@ -302,8 +301,6 @@ export class File {
 
     this.bufferChunks(allWrites);
 
-    perf.endRecording('write');
-
     if (position + length > this.meta.size) {
       this.setattr({ size: position + length });
     }
@@ -318,6 +315,12 @@ export class File {
   }
 
   lock(lockType) {
+    // TODO: Perf APIs need improvement
+    if (!this._recordingLock) {
+      perf.record('locked');
+      this._recordingLock = true;
+    }
+
     if (this.ops.lock(lockType)) {
       if (lockType >= LOCK_TYPES.RESERVED) {
         this.writeLock = true;
@@ -328,9 +331,14 @@ export class File {
   }
 
   unlock(lockType) {
+    if (lockType === 0) {
+      perf.endRecording('locked');
+      this._recordingLock = false;
+    }
+
     if (this.writeLock) {
       // In certain cases (I saw this while running VACUUM after
-      // changing page size) sqlite changes the size of the filter
+      // changing page size) sqlite changes the size of the file
       // _after_ `fsync` for some reason. In our case, this is
       // critical because we are relying on fsync to write everything
       // out. If we just did some writes, do another fsync which will
@@ -339,6 +347,7 @@ export class File {
       this.fsync();
       this.writeLock = false;
     }
+
     return this.ops.unlock(lockType);
   }
 
@@ -390,9 +399,7 @@ export class File {
         }
       }
 
-      perf.record('writeBlocks');
       this.ops.writeBlocks([...this.buffer.values()], this.meta.blockSize);
-      perf.endRecording('writeBlocks');
     }
 
     if (this._metaDirty) {

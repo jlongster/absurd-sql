@@ -3,9 +3,17 @@ import {
   writeChunks,
   File,
   getBoundaryIndexes
-} from './blocked-file';
+} from './sqlite-file';
 import MemoryBackend from './memory/backend';
 import * as fc from 'fast-check';
+
+function setPageSize(view) {
+  if (view.byteLength >= 17) {
+    view[16] = 4096 / 256;
+    view[17] = 4096 % 256;
+  }
+  return view;
+}
 
 function toArray(buffer) {
   return Array.from(new Uint8Array(buffer));
@@ -84,6 +92,7 @@ describe('chunks', () => {
 
 describe('reading file', () => {
   function readPropTest(bufferView, chunkSize, pos, length) {
+    setPageSize(bufferView);
     if (bufferView.buffer.byteLength < length) {
       return;
     }
@@ -108,7 +117,6 @@ describe('reading file', () => {
     if (length < 0 || pos < 0) {
       expect(bytesRead).toBe(0);
       expect(toArray(buffer)).toEqual(toArray(zeroBuffer(Math.max(length, 0))));
-
     } else {
       expect(bytesRead).toBe(length);
 
@@ -191,6 +199,7 @@ describe('writing file', () => {
   }
 
   function writePropTest(bufferView, chunkSize, writeDataView, length, pos) {
+    setPageSize(bufferView);
     let files = { 'file.db': bufferView.buffer };
     let backend = new MemoryBackend(chunkSize, files);
 
