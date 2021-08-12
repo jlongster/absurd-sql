@@ -83,7 +83,7 @@
     <div class="text">
       This is sqlite3 running in your browser with a backend that
       properly persists the database in IndexedDB
-      (<a href="https://github.com/jlongster/absurd-sql.js-backend">absurd-sql.js-backend</a>).
+      (<a href="https://github.com/jlongster/absurd-sql">absurd-sql</a>).
       It stores each page from the db as a separate item, treating IDB
       like a hard disk. It never has to load the full DB into memory
       and can update it with small individual writes.
@@ -93,8 +93,7 @@
       The below examples are meant to be stress tests, showing that it
       can handle large amounts of data and queries that need to scan
       all of it. With more normal cases and a small cache, it works
-      really well. It easily beats IndexedDB by a factor of 10 or
-      more.
+      really well. It easily beats IndexedDB up to a factor of 10.
     </div>
 
     <div>

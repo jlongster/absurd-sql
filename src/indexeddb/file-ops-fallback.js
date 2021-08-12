@@ -8,7 +8,7 @@ function positionToKey(pos, blockSize) {
 
 async function openDb(name) {
   return new Promise((resolve, reject) => {
-    let req = globalThis.indexedDB.open(name, 1);
+    let req = globalThis.indexedDB.open(name, 2);
     req.onsuccess = event => {
       let db = event.target.result;
 
