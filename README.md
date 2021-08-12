@@ -9,6 +9,8 @@ It basically stores a whole database into another database. Which is absurd.
 
 You should also read [this blog post](https://jlongster.com/future-sql-web) which explains the project in great detail.
 
+If you like my work, feel free to [buy me a coffee!](https://www.buymeacoffee.com/jlongster)
+
 ## How do I use it?
 
 You can check out the [example project](https://github.com/jlongster/absurd-example-project) to get started. Or follow the steps below:
