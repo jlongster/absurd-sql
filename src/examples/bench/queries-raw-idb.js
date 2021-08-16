@@ -51,23 +51,39 @@ export function sumAll(db, output, outputTiming) {
   output('Running a sum on all values');
 
   return new Promise((resolve, reject) => {
-    let req = store.openCursor();
+    let req = store.getAll();
     let total = 0;
     req.onsuccess = e => {
-      let cursor = e.target.result;
-      if (cursor) {
-        count++;
-        total += cursor.value;
-        cursor.continue();
-      } else {
-        let took = Date.now() - start;
-        output(`Total sum: ${total} (counted ${count} items), took ${took}`);
-        outputTiming(took);
-        resolve();
-      }
+      let items = e.target.result;
+      let total = items.reduce((total, x) => total + x, 0);
+      let took = Date.now() - start;
+      output(
+        `Total sum: ${total} (counted ${items.length} items), took ${took}`
+      );
+      outputTiming(took);
+      resolve();
     };
     req.onerror = reject;
   });
+
+  // return new Promise((resolve, reject) => {
+  //   let req = store.openCursor();
+  //   let total = 0;
+  //   req.onsuccess = e => {
+  //     let cursor = e.target.result;
+  //     if (cursor) {
+  //       count++;
+  //       total += cursor.value;
+  //       cursor.continue();
+  //     } else {
+  //       let took = Date.now() - start;
+  //       output(`Total sum: ${total} (counted ${count} items), took ${took}`);
+  //       outputTiming(took);
+  //       resolve();
+  //     }
+  //   };
+  //   req.onerror = reject;
+  // });
 }
 
 export function randomReads(db, output) {
