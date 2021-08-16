@@ -2,6 +2,7 @@ import initSqlJs from '@jlongster/sql.js';
 import { SQLiteFS } from '../..';
 import MemoryBackend from '../../memory/backend';
 import IndexedDBBackend from '../../indexeddb/backend';
+import webkitFileSystemBackend from '../../webkitFileSystem/backend';
 import * as queries from './queries';
 import * as rawIDBQueries from './queries-raw-idb';
 
@@ -9,12 +10,13 @@ import * as rawIDBQueries from './queries-raw-idb';
 let currentBackendType = 'idb';
 let cacheSize = 0;
 let pageSize = 4096;
-let dbName = `db21.sqlite`;
+let dbName = `db23.sqlite`;
 let recordProfile = false;
 let useRawIDB = false;
 
 let memoryBackend = new MemoryBackend({});
 let idbBackend = new IndexedDBBackend();
+let fsBackend = new webkitFileSystemBackend();
 let sqlFS;
 
 // Helper methods
@@ -23,7 +25,7 @@ let SQL = null;
 async function init() {
   if (SQL == null) {
     SQL = await initSqlJs({ locateFile: file => file });
-    sqlFS = new SQLiteFS(SQL.FS, idbBackend);
+    sqlFS = new SQLiteFS(SQL.FS, fsBackend);
     SQL.register_for_idb(sqlFS);
 
     if (typeof SharedArrayBuffer === 'undefined') {
@@ -172,7 +174,7 @@ async function populateSmall() {
 async function populateLarge() {
   clearTimings();
 
-  let count = 400000;
+  let count = 50000;
   if (currentBackendType === 'memory') {
     output(
       'Cannot write 1,000,000 items to memory backend, reducing to 100,000'
@@ -329,6 +331,8 @@ if (typeof self !== 'undefined') {
             // but it works for the demo
             if (currentBackendType === 'memory') {
               sqlFS.backend = memoryBackend;
+            } else if (currentBackendType === 'fs') {
+              sqlFS.backend = fsBackend;
             } else {
               sqlFS.backend = idbBackend;
             }
