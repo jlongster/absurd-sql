@@ -1,4 +1,4 @@
-import { Reader, Writer } from './shared-channel';
+import { Reader, Writer } from '../shared-channel';
 import * as perf from 'perf-deets';
 import { LOCK_TYPES, isSafeToWrite } from '../sqlite-util';
 

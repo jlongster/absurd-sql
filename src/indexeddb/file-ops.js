@@ -1,4 +1,4 @@
-import { Reader, Writer } from './shared-channel';
+import { Reader, Writer } from '../shared-channel';
 
 function positionToKey(pos, blockSize) {
   // We are forced to round because of floating point error. `pos`

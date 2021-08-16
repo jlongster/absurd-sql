@@ -45,5 +45,9 @@ export default [
   getConfig('src/indexeddb/backend.js', 'indexeddb-backend.js'),
   getConfig('src/indexeddb/main-thread.js', 'indexeddb-main-thread.js'),
   getConfig('src/indexeddb/backend.js', 'indexeddb-backend.js', true),
-  getConfig('src/indexeddb/main-thread.js', 'indexeddb-main-thread.js', true)
+  getConfig('src/indexeddb/main-thread.js', 'indexeddb-main-thread.js', true),
+  getConfig('src/webkitFileSystem/backend.js', 'webkitFileSystem-backend.js'),
+  getConfig('src/webkitFileSystem/main-thread.js', 'webkitFileSystem-main-thread.js'),
+  getConfig('src/webkitFileSystem/backend.js', 'webkitFileSystem-backend.js', true),
+  getConfig('src/webkitFileSystem/main-thread.js', 'webkitFileSystem-main-thread.js', true)
 ];

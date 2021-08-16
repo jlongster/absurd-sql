@@ -122,6 +122,7 @@ export class File {
   open() {
     this.ops.open();
     let meta = this.ops.readMeta();
+    console.log('got meta', meta);
 
     // It's possible that `setattr` has already been called if opening
     // the file in a mode that truncates it to 0
@@ -216,7 +217,7 @@ export class File {
   }
 
   write(bufferView, offset, length, position) {
-    // console.log('writing', this.filename, offset, length, position);
+    console.log('writing', this.filename, offset, length, position);
 
     if (this.meta.blockSize == null) {
       // We don't have a block size yet (an empty file). The first
