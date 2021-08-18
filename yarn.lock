@@ -4774,10 +4774,10 @@ path-to-regexp@0.1.7:
   resolved "https://registry.yarnpkg.com/path-to-regexp/-/path-to-regexp-0.1.7.tgz#df604178005f522f15eb4490e7247a1bfaa67f8c"
   integrity sha1-32BBeABfUi8V60SQ5yR6G/qmf4w=
 
-perf-deets@^1.0.12:
-  version "1.0.12"
-  resolved "https://registry.yarnpkg.com/perf-deets/-/perf-deets-1.0.12.tgz#5144c11692f49ebd7891c55989bfbb31c693906a"
-  integrity sha512-yCMG6M8noEZeKri/+IeTTH3VkXwmPF69Z9bxWK5gbeCyCZUwQ9DXUtL0XytYC1Mge/CJXpA4k0dIpVSZKjqJZA==
+perf-deets@^1.0.15:
+  version "1.0.15"
+  resolved "https://registry.yarnpkg.com/perf-deets/-/perf-deets-1.0.15.tgz#a766e62b7cf043a0615dd0166122b167c12fd018"
+  integrity sha512-9BD3d31eaQp2NGCLQGD/ja2COeg2KkQG/pLdPadSTB1oXHr+Ora+bt+hGZK9u8uvZ2mjwQ1eZSikIDgp03R8tA==
   dependencies:
     "@observablehq/plot" "^0.1.0"
 
