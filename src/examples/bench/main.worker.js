@@ -14,7 +14,9 @@ let recordProfile = false;
 let useRawIDB = false;
 
 let memoryBackend = new MemoryBackend({});
-let idbBackend = new IndexedDBBackend();
+let idbBackend = new IndexedDBBackend(() => {
+  console.error('Unable to write!');
+});
 let sqlFS;
 
 // Helper methods

@@ -37,8 +37,10 @@ async function openDb(name) {
 // happen async; the args to `write` must be closed over so they don't
 // change
 class Persistance {
-  constructor() {
+  constructor(onFallbackFailure) {
     this._openDb = null;
+    this.hasAlertedFailure = false;
+    this.onFallbackFailure = onFallbackFailure;
   }
 
   async getDb() {
@@ -79,15 +81,9 @@ class Persistance {
       req.onsuccess = e => {
         let cursor = e.target.result;
         if (cursor) {
-          console.log('reading', cursor.key);
           blocks.set(cursor.key, cursor.value);
           cursor.continue();
         } else {
-          console.log(
-            'read all',
-            blocks.get(-1),
-            new Uint8Array(blocks.get(0))
-          );
           resolve(blocks);
         }
       };
@@ -96,7 +92,6 @@ class Persistance {
 
   async write(writes, cachedFirstBlock, hasLocked) {
     let db = await this.getDb(this.dbName);
-    console.log('fallback: writing');
 
     // We need grab a readwrite lock on the db, and then read to check
     // to make sure we can write to it
@@ -108,27 +103,22 @@ class Persistance {
       req.onsuccess = e => {
         if (hasLocked) {
           if (!isSafeToWrite(req.result, cachedFirstBlock)) {
-            // TODO: We need to send a message to users somehow
-            console.log("OH NO WE CAN'T WRITE");
-            reject('screwed');
+            if (this.onFallbackFailure && !this.hasAlertedFailure) {
+              this.hasAlertedFailure = true;
+              this.onFallbackFailure();
+            }
+            reject(new Error('Fallback mode unable to write file changes'));
             return;
           }
         }
 
         // Flush all the writes
-        console.log('flushing writes', writes.length);
         for (let write of writes) {
           store.put(write.value, write.key);
         }
 
-        trans.onsuccess = () => {
-          console.log('done writing');
-          resolve();
-        };
-        trans.onerror = () => {
-          console.log('Flushing writes failed');
-          reject();
-        };
+        trans.onsuccess = () => resolve();
+        trans.onerror = () => reject();
       };
       req.onerror = reject;
     });
@@ -136,7 +126,7 @@ class Persistance {
 }
 
 export class FileOpsFallback {
-  constructor(filename) {
+  constructor(filename, onFallbackFailure) {
     this.filename = filename;
     this.dbName = this.filename.replace(/\//g, '-');
     this.cachedFirstBlock = null;
@@ -145,7 +135,7 @@ export class FileOpsFallback {
     this.lockType = 0;
     this.transferBlockOwnership = false;
 
-    this.persistance = new Persistance();
+    this.persistance = new Persistance(onFallbackFailure);
   }
 
   async readIfFallback() {
