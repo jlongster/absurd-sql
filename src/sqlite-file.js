@@ -110,6 +110,7 @@ export class File {
     this.meta = meta;
     this._metaDirty = false;
     this.writeLock = false;
+    this.openHandles = 0;
   }
 
   bufferChunks(chunks) {
@@ -120,27 +121,38 @@ export class File {
   }
 
   open() {
-    this.ops.open();
-    let meta = this.ops.readMeta();
+    this.openHandles++;
 
-    // It's possible that `setattr` has already been called if opening
-    // the file in a mode that truncates it to 0
-    if (this.meta == null) {
-      if (meta == null) {
-        // New file
+    // Don't open the file again if it's already open
+    if (this.openHandles === 1) {
+      this.ops.open();
+      let meta = this.ops.readMeta();
 
-        meta = { size: 0 };
+      // It's possible that `setattr` has already been called if opening
+      // the file in a mode that truncates it to 0
+      if (this.meta == null) {
+        if (meta == null) {
+          // New file
+
+          meta = { size: 0 };
+        }
+
+        this.meta = meta;
       }
-
-      this.meta = meta;
     }
 
-    return meta;
+    return this.meta;
   }
 
   close() {
     this.fsync();
-    this.ops.close();
+
+    this.openHandles = Math.max(this.openHandles - 1, 0);
+
+    // Only close it if there are no existing open handles
+    if (this.openHandles === 0) {
+      this.ops.close();
+    }
   }
 
   delete() {

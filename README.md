@@ -5,7 +5,7 @@ It implements a backend for [sql.js](https://github.com/sql-js/sql.js/) (sqlite3
 
 It basically stores a whole database into another database. Which is absurd.
 
-[See the demo](https://priceless-keller-d097e5.netlify.app/). You can also view an entire app using this [here](https://app-next.actualbudget.com/).
+[See the demo](https://priceless-keller-d097e5.netlify.app/). You can also view an entire app using this [here](https://app-next.actualbudget.com/?wtf_source=absurd).
 
 You should also read [this blog post](https://jlongster.com/future-sql-web) which explains the project in great detail.
 
