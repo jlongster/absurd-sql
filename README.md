@@ -18,7 +18,7 @@ You can check out the [example project](https://github.com/jlongster/absurd-exam
 First you install the packages:
 
 ```
-yarn add @jlongster/sql.js absurd-sql.js-backend
+yarn add @jlongster/sql.js absurd-sql
 ```
 
 Right now you need to use my fork of `sql.js`, but I'm going to open a PR and hopefully get it merged. The changes are minimal.
