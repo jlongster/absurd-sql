@@ -37,7 +37,8 @@ async function openDb(name) {
 // happen async; the args to `write` must be closed over so they don't
 // change
 class Persistance {
-  constructor(onFallbackFailure) {
+  constructor(dbName, onFallbackFailure) {
+    this.dbName = dbName;
     this._openDb = null;
     this.hasAlertedFailure = false;
     this.onFallbackFailure = onFallbackFailure;
@@ -135,7 +136,7 @@ export class FileOpsFallback {
     this.lockType = 0;
     this.transferBlockOwnership = false;
 
-    this.persistance = new Persistance(onFallbackFailure);
+    this.persistance = new Persistance(this.dbName, onFallbackFailure);
   }
 
   async readIfFallback() {
