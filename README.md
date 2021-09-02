@@ -54,7 +54,14 @@ async function run() {
   SQL.FS.mkdir('/sql');
   SQL.FS.mount(sqlFS, {}, '/sql');
 
-  let db = new SQL.Database('/sql/db.sqlite', { filename: true });
+  const path = '/sql/db.sqlite';
+  if (typeof SharedArrayBuffer === 'undefined') {
+    let stream = SQL.FS.open(path, 'a+');
+    await stream.node.contents.readIfFallback();
+    SQL.FS.close(stream);
+  }
+
+  let db = new SQL.Database(path, { filename: true });
   // You might want to try `PRAGMA page_size=8192;` too!
   db.exec(`
     PRAGMA journal_mode=MEMORY;
