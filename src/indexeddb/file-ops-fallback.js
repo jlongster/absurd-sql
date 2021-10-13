@@ -1,4 +1,5 @@
 import { LOCK_TYPES, isSafeToWrite, getPageSize } from '../sqlite-util';
+import idbReady from 'safari-14-idb-fix';
 
 function positionToKey(pos, blockSize) {
   // We are forced to round because of floating point error. `pos`
@@ -7,6 +8,8 @@ function positionToKey(pos, blockSize) {
 }
 
 async function openDb(name) {
+  await idbReady();
+
   return new Promise((resolve, reject) => {
     let req = globalThis.indexedDB.open(name, 2);
     req.onsuccess = event => {

@@ -35,5 +35,8 @@
     "README.md",
     "dist/**/*",
     "src/**/*"
-  ]
+  ],
+  "dependencies": {
+    "safari-14-idb-fix": "^1.0.4"
+  }
 }
