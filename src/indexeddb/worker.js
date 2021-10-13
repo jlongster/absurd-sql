@@ -59,13 +59,13 @@ class Transaction {
 
       if (this.lockType === LOCK_TYPES.EXCLUSIVE) {
         // Wait until all writes are committed
-        this.trans.oncomplete = e => resolve();
+        this.trans.oncomplete = (e) => resolve();
 
         // TODO: Is it OK to add this later, after an error might have
         // happened? Will it hold the error and fire this when we
         // attached it? We might want to eagerly create the promise
         // when creating the transaction and return it here
-        this.trans.onerror = e => reject(e);
+        this.trans.onerror = (e) => reject(e);
       } else {
         if (isProbablySafari) {
           // Safari has a bug where sometimes the IDB gets blocked
@@ -73,7 +73,7 @@ class Transaction {
           // transaction. You have to restart the browser to fix it.
           // We wait for readonly transactions to finish too, but this
           // is a perf hit
-          this.trans.oncomplete = e => resolve();
+          this.trans.oncomplete = (e) => resolve();
         } else {
           // No need to wait on anything in a read-only transaction.
           // Note that errors during reads area always handled by the
@@ -124,11 +124,11 @@ class Transaction {
     return new Promise((resolve, reject) => {
       perf.record('get');
       let req = this.store.get(key);
-      req.onsuccess = e => {
+      req.onsuccess = (e) => {
         perf.endRecording('get');
         resolve(req.result);
       };
-      req.onerror = e => reject(e);
+      req.onerror = (e) => reject(e);
     });
   }
 
@@ -238,7 +238,7 @@ class Transaction {
         let req = this.store.openCursor(keyRange, dir);
         perf.record('stream');
 
-        req.onsuccess = e => {
+        req.onsuccess = (e) => {
           perf.endRecording('stream');
           perf.endRecording('stream-next');
 
@@ -251,7 +251,7 @@ class Transaction {
           this.cursorPromise.resolve(cursor ? cursor.value : null);
           this.cursorPromise = null;
         };
-        req.onerror = e => {
+        req.onerror = (e) => {
           console.log('Cursor failure:', e);
 
           if (this.cursorPromise == null) {
@@ -279,8 +279,8 @@ class Transaction {
 
     return new Promise((resolve, reject) => {
       let req = this.store.put(item.value, item.key);
-      req.onsuccess = e => resolve(req.result);
-      req.onerror = e => reject(e);
+      req.onsuccess = (e) => resolve(req.result);
+      req.onerror = (e) => reject(e);
     });
   }
 
@@ -301,7 +301,7 @@ async function loadDb(name) {
     }
 
     let req = globalThis.indexedDB.open(name, 2);
-    req.onsuccess = event => {
+    req.onsuccess = (event) => {
       let db = event.target.result;
 
       db.onversionchange = () => {
@@ -318,14 +318,14 @@ async function loadDb(name) {
       openDbs.set(name, db);
       resolve(db);
     };
-    req.onupgradeneeded = event => {
+    req.onupgradeneeded = (event) => {
       let db = event.target.result;
       if (!db.objectStoreNames.contains('data')) {
         db.createObjectStore('data');
       }
     };
-    req.onblocked = e => console.log('blocked', e);
-    req.onerror = req.onabort = e => reject(e.target.error);
+    req.onblocked = (e) => console.log('blocked', e);
+    req.onerror = req.onabort = (e) => reject(e.target.error);
   });
 }
 
@@ -495,7 +495,7 @@ async function handleUnlock(writer, name, lockType) {
 }
 
 async function handleRead(writer, name, position) {
-  return withTransaction(name, 'readonly', async trans => {
+  return withTransaction(name, 'readonly', async (trans) => {
     let data = await trans.read(position);
 
     if (data == null) {
@@ -508,8 +508,8 @@ async function handleRead(writer, name, position) {
 }
 
 async function handleWrites(writer, name, writes) {
-  return withTransaction(name, 'readwrite', async trans => {
-    await trans.bulkSet(writes.map(w => ({ key: w.pos, value: w.data })));
+  return withTransaction(name, 'readwrite', async (trans) => {
+    await trans.bulkSet(writes.map((w) => ({ key: w.pos, value: w.data })));
 
     writer.int32(0);
     writer.finalize();
@@ -517,7 +517,7 @@ async function handleWrites(writer, name, writes) {
 }
 
 async function handleReadMeta(writer, name) {
-  return withTransaction(name, 'readonly', async trans => {
+  return withTransaction(name, 'readonly', async (trans) => {
     try {
       console.log('Reading meta...');
       let res = await trans.get(-1);
@@ -556,7 +556,7 @@ async function handleReadMeta(writer, name) {
 }
 
 async function handleWriteMeta(writer, name, meta) {
-  return withTransaction(name, 'readwrite', async trans => {
+  return withTransaction(name, 'readwrite', async (trans) => {
     try {
       await trans.set({ key: -1, value: meta });
 
@@ -596,7 +596,7 @@ async function listen(reader, writer) {
       perf.stop();
       // The perf library posts a message; make sure it has time to
       // actually post it before blocking the thread again
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       writer.int32(0);
       writer.finalize();
@@ -683,7 +683,7 @@ async function listen(reader, writer) {
   }
 }
 
-self.onmessage = msg => {
+self.onmessage = (msg) => {
   switch (msg.data.type) {
     case 'init': {
       // postMessage({ type: '__absurd:worker-ready' });

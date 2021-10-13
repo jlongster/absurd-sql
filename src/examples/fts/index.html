@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <body>
   <style type="text/css">
-    html, body, .container {
+    html,
+    body,
+    .container {
       height: 100%;
     }
 
@@ -52,28 +54,32 @@
 
   <div class="container">
     <div class="text">
-      This is sqlite3 running in your browser with a backend that
-      properly persists the database in IndexedDB
-      (<a href="https://github.com/jlongster/absurd-sql">absurd-sql</a>).
+      This is sqlite3 running in your browser with a backend that properly
+      persists the database in IndexedDB (<a
+        href="https://github.com/jlongster/absurd-sql"
+        >absurd-sql</a
+      >).
     </div>
 
     <div class="text last">
-      This example shows <strong>full-text search</strong>. It loads
-      the first 10 comments from the top 10 Hacker News stories, and
-      lets you search with
-      the <a href="https://www.sqlite.org/fts3.html#full_text_index_queries">full
-      capabilities</a> of sqlite3's FTS. Note how after you load data,
-      you can refresh the page and still search. All the data is
-      persisted.
+      This example shows <strong>full-text search</strong>. It loads the first
+      10 comments from the top 10 Hacker News stories, and lets you search with
+      the
+      <a href="https://www.sqlite.org/fts3.html#full_text_index_queries"
+        >full capabilities</a
+      >
+      of sqlite3's FTS. Note how after you load data, you can refresh the page
+      and still search. All the data is persisted.
     </div>
 
     <div style="margin-bottom: 15px">
-      <button id="load">Load data</button> <span style="font-size:13px">(<span class="count">...</span> items currently)</span>
+      <button id="load">Load data</button>
+      <span style="font-size: 13px"
+        >(<span class="count">...</span> items currently)</span
+      >
     </div>
 
-    <div>
-      Search: <input class="search" />
-    </div>
+    <div>Search: <input class="search" /></div>
 
     <div class="output"></div>
   </div>

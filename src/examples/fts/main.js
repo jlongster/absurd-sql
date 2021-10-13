@@ -11,7 +11,7 @@ function init() {
   worker.postMessage({ type: 'ui-invoke', name: 'init' });
 
   let output = document.querySelector('.output');
-  worker.addEventListener('message', e => {
+  worker.addEventListener('message', (e) => {
     switch (e.data.type) {
       case 'output': {
         let el = document.createElement('div');
@@ -37,7 +37,7 @@ function init() {
     }
   });
 
-  document.querySelector('.search').addEventListener('input', e => {
+  document.querySelector('.search').addEventListener('input', (e) => {
     worker.postMessage({ type: 'search', name: e.target.value });
   });
 
@@ -50,7 +50,7 @@ for (let method of methods) {
   let btn = document.querySelector(`#${method}`);
   if (btn) {
     btn.addEventListener('click', () => {
-      if(method === 'load') {
+      if (method === 'load') {
         document.querySelector('#load').textContent = 'Loading...';
       }
       worker.postMessage({ type: 'ui-invoke', name: method });

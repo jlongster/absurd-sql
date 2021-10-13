@@ -60,7 +60,7 @@ export function writeChunks(bufferView, blockSize, start, end) {
   let cursor = 0;
 
   return indexes
-    .map(index => {
+    .map((index) => {
       let cstart = 0;
       let cend = blockSize;
       if (start > index && start < index + blockSize) {
@@ -96,7 +96,7 @@ export function writeChunks(bufferView, blockSize, start, end) {
         pos: index,
         data: chunkBuffer,
         offset: cstart,
-        length: readLength
+        length: readLength,
       };
     })
     .filter(Boolean);
@@ -289,7 +289,7 @@ export class File {
         } else {
           state.fullWrites.push({
             pos: write.pos,
-            data: write.data
+            data: write.data,
           });
         }
         return state;
@@ -299,12 +299,12 @@ export class File {
 
     let reads = [];
     if (partialWrites.length > 0) {
-      reads = this.load(partialWrites.map(w => w.pos));
+      reads = this.load(partialWrites.map((w) => w.pos));
     }
 
     let allWrites = fullWrites.concat(
-      reads.map(read => {
-        let write = partialWrites.find(w => w.pos === read.pos);
+      reads.map((read) => {
+        let write = partialWrites.find((w) => w.pos === read.pos);
 
         // MuTatIoN!
         new Uint8Array(read.data).set(

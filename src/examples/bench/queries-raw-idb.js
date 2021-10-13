@@ -53,7 +53,7 @@ export function sumAll(db, output, outputTiming) {
   return new Promise((resolve, reject) => {
     let req = store.openCursor();
     let total = 0;
-    req.onsuccess = e => {
+    req.onsuccess = (e) => {
       let cursor = e.target.result;
       if (cursor) {
         count++;

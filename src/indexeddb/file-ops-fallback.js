@@ -12,7 +12,7 @@ async function openDb(name) {
 
   return new Promise((resolve, reject) => {
     let req = globalThis.indexedDB.open(name, 2);
-    req.onsuccess = event => {
+    req.onsuccess = (event) => {
       let db = event.target.result;
 
       db.onversionchange = () => {
@@ -23,14 +23,14 @@ async function openDb(name) {
 
       resolve(db);
     };
-    req.onupgradeneeded = event => {
+    req.onupgradeneeded = (event) => {
       let db = event.target.result;
       if (!db.objectStoreNames.contains('data')) {
         db.createObjectStore('data');
       }
     };
-    req.onblocked = e => console.log('blocked', e);
-    req.onerror = req.onabort = e => reject(e.target.error);
+    req.onblocked = (e) => console.log('blocked', e);
+    req.onerror = req.onabort = (e) => reject(e.target.error);
   });
 }
 
@@ -82,7 +82,7 @@ class Persistance {
       // Open a cursor and iterate through the entire file
       let req = store.openCursor(IDBKeyRange.lowerBound(-1));
       req.onerror = reject;
-      req.onsuccess = e => {
+      req.onsuccess = (e) => {
         let cursor = e.target.result;
         if (cursor) {
           blocks.set(cursor.key, cursor.value);
@@ -104,7 +104,7 @@ class Persistance {
 
     await new Promise((resolve, reject) => {
       let req = store.get(0);
-      req.onsuccess = e => {
+      req.onsuccess = (e) => {
         if (hasLocked) {
           if (!isSafeToWrite(req.result, cachedFirstBlock)) {
             if (this.onFallbackFailure && !this.hasAlertedFailure) {
@@ -203,7 +203,7 @@ export class FileOpsFallback {
 
       return {
         size: metaBlock.size,
-        blockSize: getPageSize(new Uint8Array(block))
+        blockSize: getPageSize(new Uint8Array(block)),
       };
     }
     return null;
@@ -219,7 +219,7 @@ export class FileOpsFallback {
     for (let pos of positions) {
       res.push({
         pos,
-        data: this.blocks.get(positionToKey(pos, blockSize))
+        data: this.blocks.get(positionToKey(pos, blockSize)),
       });
     }
     return res;
