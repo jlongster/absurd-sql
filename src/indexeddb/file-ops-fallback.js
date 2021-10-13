@@ -1,4 +1,5 @@
 import { LOCK_TYPES, isSafeToWrite, getPageSize } from '../sqlite-util';
+import idbReady from 'safari-14-idb-fix';
 
 function positionToKey(pos, blockSize) {
   // We are forced to round because of floating point error. `pos`
@@ -7,6 +8,8 @@ function positionToKey(pos, blockSize) {
 }
 
 async function openDb(name) {
+  await idbReady();
+
   return new Promise((resolve, reject) => {
     let req = globalThis.indexedDB.open(name, 2);
     req.onsuccess = event => {
@@ -37,7 +40,8 @@ async function openDb(name) {
 // happen async; the args to `write` must be closed over so they don't
 // change
 class Persistance {
-  constructor(onFallbackFailure) {
+  constructor(dbName, onFallbackFailure) {
+    this.dbName = dbName;
     this._openDbPromise = null;
     this.hasAlertedFailure = false;
     this.onFallbackFailure = onFallbackFailure;
@@ -135,7 +139,7 @@ export class FileOpsFallback {
     this.lockType = 0;
     this.transferBlockOwnership = false;
 
-    this.persistance = new Persistance(onFallbackFailure);
+    this.persistance = new Persistance(this.dbName, onFallbackFailure);
   }
 
   async readIfFallback() {
