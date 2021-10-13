@@ -8,7 +8,8 @@
     "jest-debug": "jest --runInBand --useStderr",
     "serve": "cd src/examples && ../../node_modules/.bin/webpack serve",
     "prettier-write": "npx prettier --write .",
-    "prettier-check": "npx prettier --check ."
+    "prettier-check": "npx prettier --check .",
+    "lint-check": "eslint \"src/**/*.{ts,js}\""
   },
   "devDependencies": {
     "@babel/plugin-transform-modules-commonjs": "^7.14.5",
