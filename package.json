@@ -7,9 +7,12 @@
     "jest": "jest",
     "jest-debug": "jest --runInBand --useStderr",
     "serve": "cd src/examples && ../../node_modules/.bin/webpack serve",
-    "prettier-write": "npx prettier --write .",
-    "prettier-check": "npx prettier --check .",
-    "lint-check": "eslint \"src/**/*.{ts,js}\""
+    "lint": "run-p lint:*",
+    "lint:eslint": "eslint \"src/**/*.{ts,js}\"",
+    "lint:prettier": "yarn prettier --check .",
+    "fix": "run-s fix:eslint fix:prettier",
+    "fix:eslint": "yarn lint:eslint --fix",
+    "fix:prettier": "yarn lint:prettier --write"
   },
   "devDependencies": {
     "@babel/plugin-transform-modules-commonjs": "^7.14.5",
@@ -23,6 +26,7 @@
     "fast-check": "^2.17.0",
     "html-webpack-plugin": "^5.3.2",
     "jest": "^27.0.5",
+    "npm-run-all": "^4.1.5",
     "perf-deets": "^1.0.17",
     "prettier": "^2.4.1",
     "rollup": "^2.53.1",
