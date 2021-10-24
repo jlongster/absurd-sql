@@ -24,7 +24,7 @@ let sqlFS;
 let SQL = null;
 async function init() {
   if (SQL == null) {
-    SQL = await initSqlJs({ locateFile: file => file });
+    SQL = await initSqlJs({ locateFile: (file) => file });
     sqlFS = new SQLiteFS(SQL.FS, idbBackend);
     SQL.register_for_idb(sqlFS);
 
@@ -71,16 +71,16 @@ function closeDatabase() {
 async function getRawIDBDatabase() {
   return new Promise((resolve, reject) => {
     let req = globalThis.indexedDB.open('raw-db');
-    req.onsuccess = e => {
+    req.onsuccess = (e) => {
       resolve(e.target.result);
     };
-    req.onupgradeneeded = e => {
+    req.onupgradeneeded = (e) => {
       let db = e.target.result;
       if (!db.objectStoreNames.contains('kv')) {
         db.createObjectStore('kv');
       }
     };
-    req.onblocked = e => {
+    req.onblocked = (e) => {
       console.log('opening db is blocked');
     };
   });
@@ -231,7 +231,7 @@ async function prepBench() {
   // Force the db to open and wait a bit to ensure everything is ready
   // (so we don't see any perf hit on the first read)
   await getDatabase();
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
 async function readBench() {
@@ -287,11 +287,11 @@ let methods = {
   randomReads,
   deleteFile,
   readBench,
-  writeBench
+  writeBench,
 };
 
 if (typeof self !== 'undefined') {
-  self.onmessage = msg => {
+  self.onmessage = (msg) => {
     switch (msg.data.type) {
       case 'ui-invoke':
         if (methods[msg.data.name] == null) {
@@ -301,7 +301,7 @@ if (typeof self !== 'undefined') {
         break;
 
       case 'run-query': {
-        getDatabase().then(db => {
+        getDatabase().then((db) => {
           let stmt = db.prepare(msg.data.sql);
           let rows = [];
           while (stmt.step()) {
@@ -311,7 +311,7 @@ if (typeof self !== 'undefined') {
           self.postMessage({
             type: 'query-results',
             data: rows,
-            id: msg.data.id
+            id: msg.data.id,
           });
         });
         break;
@@ -339,7 +339,7 @@ if (typeof self !== 'undefined') {
           case 'cacheSize': {
             cacheSize = parseInt(msg.data.value);
 
-            getDatabase().then(db => {
+            getDatabase().then((db) => {
               db.exec(`
                 PRAGMA cache_size=-${cacheSize};
               `);

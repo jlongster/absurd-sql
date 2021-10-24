@@ -3,7 +3,7 @@ export let LOCK_TYPES = {
   SHARED: 1,
   RESERVED: 2,
   PENDING: 3,
-  EXCLUSIVE: 4
+  EXCLUSIVE: 4,
 };
 
 export function getPageSize(bufferView) {

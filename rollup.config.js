@@ -15,7 +15,7 @@ function getConfig(entry, filename, perf) {
       entryFileNames: filename,
       chunkFileNames: `${basename}-[name]-[hash].js`,
       format: 'esm',
-      exports: 'named'
+      exports: 'named',
     },
     plugins: [
       !perf &&
@@ -24,18 +24,18 @@ function getConfig(entry, filename, perf) {
             'perf-deets': path.resolve(
               __dirname,
               './node_modules/perf-deets/noop.js'
-            )
-          }
+            ),
+          },
         }),
       webWorkerLoader({
         pattern: /.*\/worker\.js/,
         targetPlatform: 'browser',
         external: [],
-        plugins: [terser()]
+        plugins: [terser()],
       }),
-      nodeResolve()
+      nodeResolve(),
     ],
-    ...(perf ? { external: ['perf-deets'] } : {})
+    ...(perf ? { external: ['perf-deets'] } : {}),
   };
 }
 
@@ -45,5 +45,5 @@ export default [
   getConfig('src/indexeddb/backend.js', 'indexeddb-backend.js'),
   getConfig('src/indexeddb/main-thread.js', 'indexeddb-main-thread.js'),
   getConfig('src/indexeddb/backend.js', 'indexeddb-backend.js', true),
-  getConfig('src/indexeddb/main-thread.js', 'indexeddb-main-thread.js', true)
+  getConfig('src/indexeddb/main-thread.js', 'indexeddb-main-thread.js', true),
 ];

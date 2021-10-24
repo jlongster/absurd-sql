@@ -1,4 +1,3 @@
-
 This is an absurd project.
 
 It implements a backend for [sql.js](https://github.com/sql-js/sql.js/) (sqlite3 compiled for the web) that treats IndexedDB like a disk and stores data in blocks there. That means your sqlite3 database is persisted. And not in the terrible way of reading and writing the whole image at once -- it reads and writes your db in small chunks.
@@ -47,7 +46,7 @@ import { SQLiteFS } from 'absurd-sql';
 import IndexedDBBackend from 'absurd-sql/dist/indexeddb-backend';
 
 async function run() {
-  let SQL = await initSqlJs({ locateFile: file => file });
+  let SQL = await initSqlJs({ locateFile: (file) => file });
   let sqlFS = new SQLiteFS(SQL.FS, new IndexedDBBackend());
   SQL.register_for_idb(sqlFS);
 
@@ -67,7 +66,7 @@ async function run() {
     PRAGMA journal_mode=MEMORY;
   `);
 
-   // Your code
+  // Your code
 }
 ```
 
@@ -75,8 +74,8 @@ async function run() {
 
 Because this uses `SharedArrayBuffer` and the `Atomics` API, there are some requirement for code to run.
 
-* It must be run in a worker thread (you shouldn't block the main thread with queries anyway)
-* Your server must respond with the following headers:
+- It must be run in a worker thread (you shouldn't block the main thread with queries anyway)
+- Your server must respond with the following headers:
 
 ```
 Cross-Origin-Opener-Policy: same-origin
@@ -113,7 +112,7 @@ Read [this blog post](https://jlongster.com/future-sql-web) for more details.
 
 There are several things that could be done:
 
-* Add a bunch more tests
-* Implement a `webkitFileSystem` backend
-  * I already started it [here](https://gist.github.com/jlongster/ec00ddbb47b4b29897ab5939b8e32fbe), but initial results showed that it was way slower?
-* Bug fixes
+- Add a bunch more tests
+- Implement a `webkitFileSystem` backend
+  - I already started it [here](https://gist.github.com/jlongster/ec00ddbb47b4b29897ab5939b8e32fbe), but initial results showed that it was way slower?
+- Bug fixes

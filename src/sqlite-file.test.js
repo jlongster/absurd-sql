@@ -2,7 +2,7 @@ import {
   readChunks,
   writeChunks,
   File,
-  getBoundaryIndexes
+  getBoundaryIndexes,
 } from './sqlite-file';
 import MemoryBackend from './memory/backend';
 import * as fc from 'fast-check';
@@ -24,7 +24,7 @@ function makeChunks(chunkSize, data) {
   for (let i = 0; i < data.length; i += chunkSize) {
     arr.push({
       pos: i,
-      data: Int8Array.from(data.slice(i, i + chunkSize)).buffer
+      data: Int8Array.from(data.slice(i, i + chunkSize)).buffer,
     });
   }
   return arr;
@@ -46,16 +46,7 @@ describe('chunks', () => {
     expect(toArray(readChunks(chunks, 1, 7))).toEqual([1, 2, 3, 4, 5, 6]);
     expect(toArray(readChunks(chunks, 0, 7))).toEqual([0, 1, 2, 3, 4, 5, 6]);
     expect(toArray(readChunks(chunks, 0, 10))).toEqual([
-      0,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
     ]);
     expect(toArray(readChunks(chunks, 5, 12))).toEqual([5, 6, 7, 8, 9, 0, 0]);
   });
@@ -83,9 +74,9 @@ describe('chunks', () => {
       pos,
       pos + length
     );
-    expect(res.map(res => ({ ...res, data: toArray(res.data) }))).toEqual([
+    expect(res.map((res) => ({ ...res, data: toArray(res.data) }))).toEqual([
       { pos: 0, offset: 2, length: 6, data: [0, 0, 4, 5, 6, 7, 8, 9] },
-      { pos: 8, offset: 0, length: 4, data: [10, 11, 12, 13, 0, 0, 0, 0] }
+      { pos: 8, offset: 0, length: 4, data: [10, 11, 12, 13, 0, 0, 0, 0] },
     ]);
   });
 });

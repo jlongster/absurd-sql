@@ -34,7 +34,7 @@ function init() {
 
   worker.postMessage({ type: 'ui-invoke', name: 'init' });
 
-  worker.addEventListener('message', e => {
+  worker.addEventListener('message', (e) => {
     switch (e.data.type) {
       case 'output': {
         output(e.data.msg);
@@ -59,7 +59,7 @@ function init() {
   });
 
   for (let input of document.querySelectorAll('input[type=radio]')) {
-    input.addEventListener('change', e => {
+    input.addEventListener('change', (e) => {
       let name = e.target.name;
       let value = e.target.value;
       worker.postMessage({ type: 'options', name, value });
@@ -73,13 +73,13 @@ function init() {
   document.querySelector('input[name="pageSize"][value="4096"]').checked = true;
 
   let profile = document.querySelector('input[name="profile"]');
-  profile.addEventListener('click', e => {
+  profile.addEventListener('click', (e) => {
     worker.postMessage({ type: 'profiling', on: e.target.checked });
   });
   worker.postMessage({ type: 'profiling', on: profile.checked });
 
   let rawIDB = document.querySelector('input[name="raw-indexeddb"]');
-  rawIDB.addEventListener('click', e => {
+  rawIDB.addEventListener('click', (e) => {
     document.querySelector('.disable-if-raw-idb').style.opacity = e.target
       .checked
       ? 0.3
@@ -87,13 +87,13 @@ function init() {
     worker.postMessage({
       type: 'options',
       name: 'raw-idb',
-      on: e.target.checked
+      on: e.target.checked,
     });
   });
   worker.postMessage({
     type: 'options',
     name: 'raw-idb',
-    on: rawIDB.checked
+    on: rawIDB.checked,
   });
 }
 
@@ -105,7 +105,7 @@ let methods = [
   'randomReads',
   'deleteFile',
   'readBench',
-  'writeBench'
+  'writeBench',
 ];
 
 for (let method of methods) {
@@ -119,11 +119,11 @@ for (let method of methods) {
 
 init();
 
-window.runQuery = sql => {
+window.runQuery = (sql) => {
   let reqId = Math.random();
 
-  let promise = new Promise(resolve => {
-    let handler = e => {
+  let promise = new Promise((resolve) => {
+    let handler = (e) => {
       if (e.data.type === 'query-results' && e.data.id === reqId) {
         worker.removeEventListener('message', handler);
         resolve(e.data.data);

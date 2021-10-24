@@ -19,7 +19,7 @@ let sqlFS;
 let SQL = null;
 let ready = null;
 async function _init() {
-  SQL = await initSqlJs({ locateFile: file => file });
+  SQL = await initSqlJs({ locateFile: (file) => file });
   sqlFS = new SQLiteFS(SQL.FS, idbBackend);
   SQL.register_for_idb(sqlFS);
 
@@ -95,7 +95,7 @@ async function load() {
   let stories = await Promise.all(
     storyIds
       .slice(0, 10)
-      .map(storyId =>
+      .map((storyId) =>
         fetchJSON(
           `https://hacker-news.firebaseio.com/v0/item/${storyId}.json?print=pretty`
         )
@@ -117,7 +117,7 @@ async function load() {
             id: commentId,
             text: comment.text,
             storyId: story.id,
-            storyTitle: story.title
+            storyTitle: story.title,
           });
         }
       }
@@ -179,11 +179,11 @@ let methods = {
   init,
   load,
   search,
-  count
+  count,
 };
 
 if (typeof self !== 'undefined') {
-  self.onmessage = msg => {
+  self.onmessage = (msg) => {
     switch (msg.data.type) {
       case 'search':
         search(msg.data.name);
