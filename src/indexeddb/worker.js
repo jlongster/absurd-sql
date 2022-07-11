@@ -288,7 +288,7 @@ class Transaction {
     this.prevReads = null;
 
     for (let item of items) {
-      this.store.put(item.value, item.key);
+      await this.set(item);
     }
   }
 }
