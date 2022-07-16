@@ -287,9 +287,7 @@ class Transaction {
   async bulkSet(items) {
     this.prevReads = null;
 
-    for (let item of items) {
-      await this.set(item);
-    }
+    await Promise.all(items.map((item) => this.set(item)));
   }
 }
 
