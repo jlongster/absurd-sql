@@ -142,12 +142,22 @@ export default class SQLiteFS {
 
   lock(path, lockType) {
     let { node } = this.FS.lookupPath(path);
-    return node.contents.lock(lockType);
+
+    if (node && node.contents) {
+      return node.contents.lock(lockType);
+    }
+
+    return true;
   }
 
   unlock(path, lockType) {
     let { node } = this.FS.lookupPath(path);
-    return node.contents.unlock(lockType);
+
+    if (node && node.contents) {
+      return node.contents.unlock(lockType);
+    }
+
+    return true;
   }
 
   createNode(parent, name, mode, dev) {
