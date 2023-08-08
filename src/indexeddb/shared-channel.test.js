@@ -78,11 +78,11 @@ describe('reader/writer worker', () => {
     let buffer = new ArrayBuffer(size);
     let writer = new Writer(buffer, {
       useAtomics: false,
-      stream: true
+      stream: true,
     });
     let reader = new Reader(buffer, {
       useAtomics: false,
-      stream: true
+      stream: true,
     });
 
     let int32 = new Int32Array(buffer);

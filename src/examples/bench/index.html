@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <body>
   <style type="text/css">
-    html, body, .container {
+    html,
+    body,
+    .container {
       height: 100%;
     }
 
@@ -43,7 +45,7 @@
       display: block;
       margin-bottom: 5px;
     }
-    
+
     .output > div {
       margin-bottom: 10px;
     }
@@ -81,19 +83,20 @@
 
   <div class="container">
     <div class="text">
-      This is sqlite3 running in your browser with a backend that
-      properly persists the database in IndexedDB
-      (<a href="https://github.com/jlongster/absurd-sql">absurd-sql</a>).
-      It stores each page from the db as a separate item, treating IDB
-      like a hard disk. It never has to load the full DB into memory
-      and can update it with small individual writes.
+      This is sqlite3 running in your browser with a backend that properly
+      persists the database in IndexedDB (<a
+        href="https://github.com/jlongster/absurd-sql"
+        >absurd-sql</a
+      >). It stores each page from the db as a separate item, treating IDB like
+      a hard disk. It never has to load the full DB into memory and can update
+      it with small individual writes.
     </div>
 
     <div class="text last">
-      The below examples are meant to be stress tests, showing that it
-      can handle large amounts of data and queries that need to scan
-      all of it. With more normal cases and a small cache, it works
-      really well. It easily beats IndexedDB up to a factor of 10.
+      The below examples are meant to be stress tests, showing that it can
+      handle large amounts of data and queries that need to scan all of it. With
+      more normal cases and a small cache, it works really well. It easily beats
+      IndexedDB up to a factor of 10.
     </div>
 
     <div>
@@ -110,31 +113,55 @@
     </div>
 
     <div class="options">
-      <label><input type="checkbox" name="profile"> Record performance profile</label>
-      <label><input type="checkbox" name="raw-indexeddb"> Use raw IndexedDB</label>
+      <label
+        ><input type="checkbox" name="profile" /> Record performance
+        profile</label
+      >
+      <label
+        ><input type="checkbox" name="raw-indexeddb" /> Use raw IndexedDB</label
+      >
     </div>
 
     <div class="disable-if-raw-idb">
       <div class="options">
         Backend:
-        <label><input type="radio" name="backend" value="idb" checked> IndexedDB</label>
-        <label><input type="radio" name="backend" value="memory"> Memory</label>
+        <label
+          ><input type="radio" name="backend" value="idb" checked />
+          IndexedDB</label
+        >
+        <label
+          ><input type="radio" name="backend" value="memory" /> Memory</label
+        >
       </div>
 
       <div class="options">
         Cache size:
-        <label><input type="radio" name="cacheSize" value="0" checked> 0MB</label>
-        <label><input type="radio" name="cacheSize" value="2000"> 2MB</label>
-        <label><input type="radio" name="cacheSize" value="10000"> 10MB</label>
-        <label><input type="radio" name="cacheSize" value="60000"> 60MB</label>
-        <span class="warning" style="font-size: 13px; color: #8080a0">Using a cache will greatly improve perf, but no cache shows the full number of read/writes</span>
+        <label
+          ><input type="radio" name="cacheSize" value="0" checked /> 0MB</label
+        >
+        <label><input type="radio" name="cacheSize" value="2000" /> 2MB</label>
+        <label
+          ><input type="radio" name="cacheSize" value="10000" /> 10MB</label
+        >
+        <label
+          ><input type="radio" name="cacheSize" value="60000" /> 60MB</label
+        >
+        <span class="warning" style="font-size: 13px; color: #8080a0"
+          >Using a cache will greatly improve perf, but no cache shows the full
+          number of read/writes</span
+        >
       </div>
 
       <div class="options pageSize">
         Page size:
-        <label><input type="radio" name="pageSize" value="4096" checked> 4096</label>
-        <label><input type="radio" name="pageSize" value="8192"> 8192</label>
-        <label><input type="radio" name="pageSize" value="16384"> 16384</label>
+        <label
+          ><input type="radio" name="pageSize" value="4096" checked />
+          4096</label
+        >
+        <label><input type="radio" name="pageSize" value="8192" /> 8192</label>
+        <label
+          ><input type="radio" name="pageSize" value="16384" /> 16384</label
+        >
       </div>
     </div>
 

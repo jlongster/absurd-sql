@@ -13,10 +13,10 @@ function startWorker(reader, writer) {
   self.postMessage({
     type: '__absurd:spawn-idb-worker',
     argBuffer: writer.buffer,
-    resultBuffer: reader.buffer
+    resultBuffer: reader.buffer,
   });
 
-  self.addEventListener('message', e => {
+  self.addEventListener('message', (e) => {
     switch (e.data.type) {
       // Normally you would use `postMessage` control the profiler in
       // a worker (just like this worker go those events), and the
@@ -79,7 +79,7 @@ export class FileOps {
             pos,
             // If th length is 0, the block didn't exist. We return a
             // blank block in that case
-            data: data.byteLength === 0 ? new ArrayBuffer(blockSize) : data
+            data: data.byteLength === 0 ? new ArrayBuffer(blockSize) : data,
           });
         }
 
@@ -162,14 +162,14 @@ export class FileOps {
   lock(lockType) {
     return this.invokeWorker('lockFile', {
       name: this.getStoreName(),
-      lockType
+      lockType,
     });
   }
 
   unlock(lockType) {
     return this.invokeWorker('unlockFile', {
       name: this.getStoreName(),
-      lockType
+      lockType,
     });
   }
 
@@ -195,13 +195,13 @@ export class FileOps {
     let argBuffer = new SharedArrayBuffer(4096 * 9);
     this.writer = new Writer(argBuffer, {
       name: 'args (backend)',
-      debug: false
+      debug: false,
     });
 
     let resultBuffer = new SharedArrayBuffer(4096 * 9);
     this.reader = new Reader(resultBuffer, {
       name: 'results',
-      debug: false
+      debug: false,
     });
 
     // TODO: We could pool workers and reuse them so opening files
@@ -232,7 +232,7 @@ export class FileOps {
     return this.invokeWorker('readBlocks', {
       name: this.getStoreName(),
       positions,
-      blockSize
+      blockSize,
     });
   }
 
@@ -244,7 +244,7 @@ export class FileOps {
     return this.invokeWorker('writeBlocks', {
       name: this.getStoreName(),
       writes,
-      blockSize
+      blockSize,
     });
   }
 }

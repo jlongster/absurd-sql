@@ -4,15 +4,15 @@ module.exports = {
     node: true,
     es2021: true,
     jest: true,
-    worker: true
+    worker: true,
   },
   extends: 'eslint:recommended',
   parserOptions: {
     ecmaVersion: 12,
-    sourceType: 'module'
+    sourceType: 'module',
   },
   rules: {
     'no-unused-vars': 'off',
-    'no-inner-declarations': 'off'
-  }
+    'no-inner-declarations': 'off',
+  },
 };

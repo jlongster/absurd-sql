@@ -45,7 +45,7 @@ class FileOps {
     // console.log('_reading', this.filename, positions);
     let data = this.data;
 
-    return positions.map(pos => {
+    return positions.map((pos) => {
       let buffer = new ArrayBuffer(blockSize);
 
       if (pos < data.byteLength) {
@@ -104,7 +104,7 @@ export default class MemoryBackend {
           data
             ? {
                 size: data.byteLength,
-                blockSize: this.defaultBlockSize
+                blockSize: this.defaultBlockSize,
               }
             : null
         )

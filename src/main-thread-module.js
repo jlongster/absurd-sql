@@ -34,7 +34,7 @@ function makeStartWorkerFromMain(getModule) {
 
       worker.postMessage({ type: 'init', buffers: [argBuffer, resultBuffer] });
 
-      worker.addEventListener('message', msg => {
+      worker.addEventListener('message', (msg) => {
         // Forward any messages to the worker that's supposed
         // to be the parent
         parentWorker.postMessage(msg.data);
@@ -46,8 +46,8 @@ function makeStartWorkerFromMain(getModule) {
 export function makeInitBackend(spawnEventName, getModule) {
   const startWorkerFromMain = makeStartWorkerFromMain(getModule);
 
-  return worker => {
-    worker.addEventListener('message', e => {
+  return (worker) => {
+    worker.addEventListener('message', (e) => {
       switch (e.data.type) {
         case spawnEventName:
           startWorkerFromMain(e.data.argBuffer, e.data.resultBuffer, worker);

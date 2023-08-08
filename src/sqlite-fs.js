@@ -1,6 +1,6 @@
 const ERRNO_CODES = {
   EPERM: 63,
-  ENOENT: 44
+  ENOENT: 44,
 };
 
 // This implements an emscripten-compatible filesystem that is means
@@ -18,7 +18,7 @@ export default class SQLiteFS {
     this.backend = backend;
 
     this.node_ops = {
-      getattr: node => {
+      getattr: (node) => {
         let fileattr = FS.isFile(node.mode) ? node.contents.getattr() : null;
 
         let attr = {};
@@ -66,7 +66,7 @@ export default class SQLiteFS {
         let node = this.FS.lookupNode(parent, name);
         node.contents.delete(name);
       },
-      readdir: node => {
+      readdir: (node) => {
         // We could list all the available databases here if `node` is
         // the root directory. However Firefox does not implemented
         // such a methods. Other browsers do, but since it's not
@@ -78,19 +78,19 @@ export default class SQLiteFS {
       symlink: (parent, newname, oldpath) => {
         throw new Error('symlink not implemented');
       },
-      readlink: node => {
+      readlink: (node) => {
         throw new Error('symlink not implemented');
-      }
+      },
     };
 
     this.stream_ops = {
-      open: stream => {
+      open: (stream) => {
         if (this.FS.isFile(stream.node.mode)) {
           stream.node.contents.open();
         }
       },
 
-      close: stream => {
+      close: (stream) => {
         if (this.FS.isFile(stream.node.mode)) {
           stream.node.contents.close();
         }
@@ -132,7 +132,7 @@ export default class SQLiteFS {
       },
       fsync: (stream, buffer, offset, length, mmapFlags) => {
         stream.node.contents.fsync();
-      }
+      },
     };
   }
 
@@ -172,7 +172,7 @@ export default class SQLiteFS {
         mknod: this.node_ops.mknod,
         lookup: this.node_ops.lookup,
         unlink: this.node_ops.unlink,
-        setattr: this.node_ops.setattr
+        setattr: this.node_ops.setattr,
       };
       node.stream_ops = {};
       node.contents = {};

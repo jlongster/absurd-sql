@@ -9,8 +9,8 @@ function getConfig(name, entry, html) {
       hot: true,
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Embedder-Policy': 'require-corp'
-      }
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+      },
     },
     entry,
     mode: 'development',
@@ -19,25 +19,25 @@ function getConfig(name, entry, html) {
       fallback: {
         crypto: false,
         path: false,
-        fs: false
-      }
+        fs: false,
+      },
     },
     plugins: [
       new HtmlWebpackPlugin({ template: html }),
-      new webpack.IgnorePlugin({ resourceRegExp: /perf_hooks/ })
+      new webpack.IgnorePlugin({ resourceRegExp: /perf_hooks/ }),
     ],
     module: {
       rules: [
         {
           test: /\/worker\.js$/,
-          use: { loader: 'worker-loader' }
-        }
-      ]
-    }
+          use: { loader: 'worker-loader' },
+        },
+      ],
+    },
   };
 }
 
 module.exports = [
   getConfig('bench', './bench/main.js', './bench/index.html'),
-  getConfig('fts', './fts/main.js', './fts/index.html')
+  getConfig('fts', './fts/main.js', './fts/index.html'),
 ];
