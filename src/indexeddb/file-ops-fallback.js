@@ -42,24 +42,24 @@ async function openDb(name) {
 class Persistance {
   constructor(dbName, onFallbackFailure) {
     this.dbName = dbName;
-    this._openDb = null;
+    this._openDbPromise = null;
     this.hasAlertedFailure = false;
     this.onFallbackFailure = onFallbackFailure;
   }
 
-  async getDb() {
-    if (this._openDb) {
-      return this._openDb;
+  getDb() {
+    if (this._openDbPromise) {
+      return this._openDbPromise;
     }
 
-    this._openDb = await openDb(this.dbName);
-    return this._openDb;
+    this._openDbPromise = openDb(this.dbName);
+    return this._openDbPromise;
   }
 
   closeDb() {
-    if (this._openDb) {
-      this._openDb.close();
-      this._openDb = null;
+    if (this._openDbPromise) {
+      this._openDbPromise.then((db) => db.close());
+      this._openDbPromise = null;
     }
   }
 
